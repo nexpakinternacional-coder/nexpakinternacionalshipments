@@ -179,3 +179,8 @@ Marca cada fase con [x] cuando esté terminada.
 - Se eligió Vite en lugar de Next.js porque el plan gratuito de Vercel prohíbe el uso comercial. Cloudflare Pages lo permite y sirve sitios estáticos.
 - La guía se genera en la base de datos y no en el frontend, para garantizar que sea única y evitar manipulación.
 - La vista pública no lee tablas directamente: usa RPC y Broadcast para no exponer datos personales.
+- Se usa Tailwind CSS v4 (no v3): la configuración va en `vite.config.ts` mediante el plugin `@tailwindcss/vite`; el CSS solo necesita `@import "tailwindcss"` y no se requiere `tailwind.config.js`.
+- React Router v7 se usa en modo librería (no framework): `createBrowserRouter` + `RouterProvider` en `main.tsx`, con `<Outlet />` en los layouts para rutas anidadas. La ruta `/admin/login` es independiente (no anidada bajo `AdminLayout`) para simplificar el guard de auth en la Fase 3.
+- El fallback de SPA para Cloudflare Pages se resuelve con `public/_redirects` (`/* /index.html 200`), que es el mecanismo estándar y vigente.
+- Vitest se usa para tests unitarios con importaciones explícitas (`import { describe, it, expect } from 'vitest'`), no con globals, para evitar configuración extra en tsconfig.
+- El `name` en `package.json` es `nexpak` porque la carpeta del proyecto tiene un espacio y no puede usarse como nombre de paquete npm.
