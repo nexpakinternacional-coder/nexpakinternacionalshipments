@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { NavLink, Outlet, useLocation } from 'react-router-dom'
+import { Link, Outlet, useLocation } from 'react-router-dom'
 import {
   LayoutDashboard,
   LogOut,
@@ -16,31 +16,48 @@ interface NavItemDef {
   to: string
   icon: LucideIcon
   label: string
-  end: boolean
+  esActivo: (pathname: string) => boolean
 }
 
 const NAV_ITEMS: NavItemDef[] = [
-  { to: '/admin', icon: LayoutDashboard, label: t.nav.resumen, end: true },
-  { to: '/admin/envios', icon: Package, label: t.nav.envios, end: false },
-  { to: '/admin/envios/nuevo', icon: PackagePlus, label: t.nav.nuevoEnvio, end: true },
+  {
+    to: '/admin',
+    icon: LayoutDashboard,
+    label: t.nav.resumen,
+    esActivo: p => p === '/admin',
+  },
+  {
+    to: '/admin/envios',
+    icon: Package,
+    label: t.nav.envios,
+    // Activo en /admin/envios y /admin/envios/:id, pero NO en /admin/envios/nuevo
+    esActivo: p =>
+      p === '/admin/envios' ||
+      (p.startsWith('/admin/envios/') && p !== '/admin/envios/nuevo'),
+  },
+  {
+    to: '/admin/envios/nuevo',
+    icon: PackagePlus,
+    label: t.nav.nuevoEnvio,
+    esActivo: p => p === '/admin/envios/nuevo',
+  },
 ]
 
 function NavItem({ item }: { item: NavItemDef }) {
+  const { pathname } = useLocation()
+  const activo = item.esActivo(pathname)
+
   return (
-    <NavLink
+    <Link
       to={item.to}
-      end={item.end}
-      className={({ isActive }) =>
-        `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
-          isActive
-            ? 'bg-white/15 text-white'
-            : 'text-white/65 hover:bg-white/10 hover:text-white'
-        }`
-      }
+      aria-current={activo ? 'page' : undefined}
+      className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
+        activo ? 'bg-white/15 text-white' : 'text-white/65 hover:bg-white/10 hover:text-white'
+      }`}
     >
       <item.icon size={18} strokeWidth={1.75} aria-hidden="true" />
       {item.label}
-    </NavLink>
+    </Link>
   )
 }
 

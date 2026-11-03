@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { type Resolver, useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { envioSchema, type EnvioFormData } from './schema'
@@ -10,6 +11,24 @@ interface EnvioFormProps {
   textoBoton?: string
   textoCargando?: string
   onCancelar?: () => void
+  storageKey?: string
+}
+
+function leerBorrador(key: string): Partial<EnvioFormData> | null {
+  try {
+    const raw = sessionStorage.getItem(key)
+    return raw ? (JSON.parse(raw) as Partial<EnvioFormData>) : null
+  } catch {
+    return null
+  }
+}
+
+function borrarBorrador(key: string) {
+  try {
+    sessionStorage.removeItem(key)
+  } catch {
+    // ignorar
+  }
 }
 
 const inputCls = (err?: string) =>
@@ -71,31 +90,58 @@ export default function EnvioForm({
   textoBoton = t.envios.formulario.botonGuardar,
   textoCargando = t.envios.formulario.cargando,
   onCancelar,
+  storageKey,
 }: EnvioFormProps) {
+  // Borrador guardado en sessionStorage (red de seguridad ante TOKEN_REFRESHED)
+  const borrador = storageKey ? leerBorrador(storageKey) : null
+
   const {
     register,
     handleSubmit,
     control,
     formState: { errors, isSubmitting },
     setError,
+    watch,
   } = useForm<EnvioFormData>({
-    // Cast needed: z.preprocess gives `unknown` input in Zod v4, but form values are EnvioFormData
+    // Cast needed: z.preprocess da input `unknown` en Zod v4, pero los valores del form son EnvioFormData
     resolver: zodResolver(envioSchema) as unknown as Resolver<EnvioFormData>,
     defaultValues: {
       moneda: 'USD',
       tipo_servicio: 'estandar',
+      remitente_pais: '',
+      destinatario_pais: '',
       ...defaultValues,
+      ...(borrador ?? {}),
     },
   })
+
+  // Persiste el borrador en sessionStorage en cada cambio
+  useEffect(() => {
+    if (!storageKey) return
+    const { unsubscribe } = watch(values => {
+      try {
+        sessionStorage.setItem(storageKey, JSON.stringify(values))
+      } catch {
+        // ignorar (ej. modo privado con storage desactivado)
+      }
+    })
+    return unsubscribe
+  }, [storageKey, watch])
 
   async function onSubmit(data: EnvioFormData) {
     try {
       await onGuardar(data)
+      if (storageKey) borrarBorrador(storageKey)
     } catch (err) {
       setError('root', {
         message: err instanceof Error ? err.message : t.envios.formulario.error,
       })
     }
+  }
+
+  function handleCancelar() {
+    if (storageKey) borrarBorrador(storageKey)
+    onCancelar?.()
   }
 
   const f = t.envios.formulario
@@ -273,7 +319,7 @@ export default function EnvioForm({
         {onCancelar && (
           <button
             type="button"
-            onClick={onCancelar}
+            onClick={handleCancelar}
             className="px-6 py-2.5 border border-border text-ink rounded-lg text-sm hover:bg-canvas transition-colors cursor-pointer"
           >
             {t.envios.formulario.botonCancelar}

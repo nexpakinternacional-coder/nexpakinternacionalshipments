@@ -216,6 +216,7 @@ export default function DetalleEnvioPage() {
           textoBoton={t.envios.formulario.botonGuardarCambios}
           textoCargando={t.envios.formulario.cargandoEdicion}
           onCancelar={() => setEditando(false)}
+          storageKey={`borrador-edicion-${id}`}
         />
       </div>
     )

@@ -57,7 +57,7 @@ export default function NuevoEnvioPage() {
         </h1>
       </div>
 
-      <EnvioForm onGuardar={handleGuardar} />
+      <EnvioForm onGuardar={handleGuardar} storageKey="borrador-nuevo-envio" />
     </div>
   )
 }
