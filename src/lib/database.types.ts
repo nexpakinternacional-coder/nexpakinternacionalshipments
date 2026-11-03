@@ -1,4 +1,6 @@
-﻿export type Json =
+Warning: --linked is deprecated and will be removed in v4. Use --remote instead
+Target: project nexpak (axqhjdfwoinnjlvtbapg) · production
+export type Json =
   | string
   | number
   | boolean
@@ -266,26 +268,23 @@ export type Database = {
         Args: { p_evento_id: string; p_motivo: string }
         Returns: undefined
       }
-      es_admin: { Args: Record<PropertyKey, never>; Returns: boolean }
-      es_staff: { Args: Record<PropertyKey, never>; Returns: boolean }
-      generar_guia: { Args: Record<PropertyKey, never>; Returns: string }
+      es_admin: { Args: never; Returns: boolean }
+      es_staff: { Args: never; Returns: boolean }
+      generar_guia: { Args: never; Returns: string }
       inactivar_envio: {
         Args: { p_envio_id: string; p_motivo: string }
         Returns: undefined
       }
       rastrear_envio: { Args: { p_guia: string }; Returns: Json }
-      reactivar_envio: {
-        Args: { p_envio_id: string }
-        Returns: undefined
-      }
+      reactivar_envio: { Args: { p_envio_id: string }; Returns: undefined }
       registrar_evento_masivo: {
         Args: {
           p_envio_ids: string[]
           p_estado: Database["public"]["Enums"]["estado_envio"]
-          p_ubicacion: string
-          p_nota_publica: string
           p_nota_interna: string
+          p_nota_publica: string
           p_ocurrido_en: string
+          p_ubicacion: string
         }
         Returns: Json
       }
