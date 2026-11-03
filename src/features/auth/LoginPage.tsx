@@ -24,13 +24,13 @@ function mapearError(error: AuthError): string {
 }
 
 export default function LoginPage() {
-  const { session, cargando } = useAuth()
+  const { session, cargandoSesion } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [enviando, setEnviando] = useState(false)
 
-  if (cargando) {
+  if (cargandoSesion) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-canvas">
         <span className="text-ink-muted text-sm">{t.comun.cargando}</span>

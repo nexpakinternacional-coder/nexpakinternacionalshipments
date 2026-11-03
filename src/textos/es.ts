@@ -33,6 +33,9 @@ export const t = {
     errorSinConexion: 'Sin conexión. Verifica tu internet e intenta de nuevo.',
     sinAcceso: 'Tu cuenta no tiene acceso al panel.',
     sinAccesoDetalle: 'Comunícate con el administrador para activar tu cuenta.',
+    errorPerfil: 'No se pudo cargar tu perfil.',
+    errorPerfilDetalle: 'Verifica tu conexión e intenta de nuevo.',
+    reintentar: 'Reintentar',
   },
 
   nav: {
