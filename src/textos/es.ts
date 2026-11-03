@@ -92,11 +92,33 @@ export const t = {
     detalleVolver: 'Volver al listado',
     detalleTituloEditar: 'Editar envío',
 
-    eliminarTitulo: 'Eliminar envío',
-    eliminarAdvertencia:
-      'Esta acción no se puede deshacer. El envío y todo su historial serán eliminados permanentemente.',
-    eliminarConfirmarLabel: 'Escribe la guía para confirmar',
-    eliminarConfirmarBoton: 'Eliminar definitivamente',
+    inactivarTitulo: 'Inactivar envío',
+    inactivarAdvertencia:
+      'El envío quedará inactivo. No se podrá editar ni actualizar su estado hasta que sea reactivado. El registro no se elimina.',
+    inactivarMotivoLabel: 'Motivo de inactivación',
+    inactivarMotivoPlaceholder: 'Describe el motivo…',
+    inactivarConfirmarLabel: 'Escribe la guía para confirmar',
+    inactivarConfirmarBoton: 'Inactivar envío',
+    inactivarCargando: 'Inactivando…',
+
+    reactivarTitulo: 'Reactivar envío',
+    reactivarConfirmar: '¿Estás seguro de que quieres reactivar este envío?',
+    reactivarBoton: 'Reactivar',
+    reactivarCargando: 'Reactivando…',
+
+    bannnerInactivo: (fecha: string, nombre: string, motivo: string) =>
+      `Envío inactivado el ${fecha} por ${nombre} · Motivo: ${motivo}`,
+
+    filtroActivos: 'Solo activos',
+    filtroInactivos: 'Inactivos',
+    filtroTodosActividad: 'Todos',
+    etiquetaInactivo: 'Inactivo',
+
+    datosFaltantes: (campos: string[]) =>
+      `Este envío tiene datos incompletos: ${campos.join(', ')}`,
+    borradorDisponible: 'Tienes cambios sin guardar de una edición anterior.',
+    borradorRestaurar: 'Restaurar',
+    borradorDescartar: 'Descartar',
 
     formulario: {
       tituloNuevo: 'Registrar nuevo envío',
@@ -139,15 +161,70 @@ export const t = {
 
   eventos: {
     titulo: 'Historial',
-    cambiarEstado: 'Cambiar estado',
+    actualizarEstado: 'Actualizar estado',
+    editarEvento: 'Editar evento',
     nuevoEstado: 'Nuevo estado',
+    estadoSugerido: 'Siguiente sugerido',
+    flujoNormal: 'Flujo normal',
+    excepciones: 'Excepciones',
     ubicacion: 'Ubicación',
+    ubicacionPlaceholder: 'Ej. Miami, EE. UU.',
     notaPublica: 'Nota para el cliente',
-    notaInterna: 'Nota interna',
+    notaPublicaPlaceholder: 'Visible para el destinatario…',
+    notaInterna: 'Nota interna (solo staff)',
+    notaInternaPlaceholder: 'No la ve el cliente…',
+    fechaHora: 'Fecha y hora del evento',
     botonGuardar: 'Guardar cambio',
+    botonGuardarEdicion: 'Guardar edición',
     cargando: 'Guardando…',
     exito: 'Estado actualizado',
+    exitoEdicion: 'Evento actualizado',
     error: 'Error al actualizar el estado',
+
+    // Confirmaciones
+    confirmarRetroceso: (estadoActual: string, estadoNuevo: string) =>
+      `El estado "${estadoNuevo}" es anterior al estado actual "${estadoActual}". ¿Confirmas el retroceso?`,
+    confirmarEstadoFinal: (estadoActual: string) =>
+      `El envío ya está en estado "${estadoActual}". ¿Quieres agregar otro evento de todas formas?`,
+    confirmarEntregado: '¿Confirmas que el paquete fue entregado al destinatario?',
+
+    // Anulación
+    anularTitulo: 'Anular evento',
+    anularAdvertencia: 'El evento quedará anulado y no se mostrará al cliente. Esta acción no se puede deshacer.',
+    anularMotivoLabel: 'Motivo de anulación',
+    anularMotivoPlaceholder: 'Describe el motivo…',
+    anularBoton: 'Anular evento',
+    anularCargando: 'Anulando…',
+
+    // Historial
+    eventoAnulado: (nombre: string, motivo: string) =>
+      `Anulado por ${nombre} · Motivo: ${motivo}`,
+    eventoEditado: 'editado',
+    menuEditar: 'Editar',
+    menuAnular: 'Anular',
+
+    // Barra acciones masivas
+    seleccionados: (n: number) => `${n} ${n === 1 ? 'envío' : 'envíos'} seleccionado${n === 1 ? '' : 's'}`,
+    actualizarMasivo: 'Actualizar estado',
+    limpiarSeleccion: 'Limpiar selección',
+    resultadoMasivo: (act: number, om: number) =>
+      `${act} ${act === 1 ? 'envío actualizado' : 'envíos actualizados'}${om > 0 ? `, ${om} omitido${om === 1 ? '' : 's'}` : ''}`,
+
+    // Plantillas de nota pública por estado
+    plantillas: {
+      guia_generada: 'Tu envío ha sido registrado en nuestro sistema.',
+      recibido_origen: 'Tu paquete fue recibido en nuestra bodega de origen.',
+      transito_internacional: 'Tu paquete está en tránsito internacional.',
+      en_aduana: 'Tu paquete está siendo procesado en aduana.',
+      liberado_aduana: 'Tu paquete fue liberado de aduana.',
+      centro_distribucion: 'Tu paquete llegó al centro de distribución.',
+      en_reparto: 'Tu paquete está en camino para ser entregado hoy.',
+      entregado: 'Tu paquete fue entregado con éxito. ¡Gracias por elegirnos!',
+      novedad: 'Tu envío presenta una novedad. Nos comunicaremos contigo a la brevedad.',
+      retenido_aduana: 'Tu paquete está retenido en aduana. Te contactaremos con más información.',
+      intento_fallido: 'Se realizó un intento de entrega sin éxito. Coordinaremos una nueva fecha.',
+      devuelto: 'Tu paquete fue devuelto al remitente de origen.',
+    } as Record<string, string>,
   },
 
   errores: {
@@ -170,6 +247,8 @@ export const t = {
     copiar: 'Copiar',
     copiado: '¡Copiado!',
     noAplica: '—',
+    cerrar: 'Cerrar',
+    seleccionarTodos: 'Seleccionar todos',
   },
 
   pagina404: {

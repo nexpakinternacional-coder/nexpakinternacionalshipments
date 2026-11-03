@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, Check, Copy, Pencil, Trash2 } from 'lucide-react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { Link, useParams } from 'react-router-dom'
+import { ArrowLeft, Check, Copy, MoreHorizontal, Pencil, RefreshCw } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { type Tables } from '../../lib/supabase'
 import { useAuth } from '../auth/AuthContext'
@@ -11,6 +11,7 @@ import BadgeEstado from '../../components/BadgeEstado'
 import { Skeleton } from '../../components/Skeleton'
 import EnvioForm from './EnvioForm'
 import { type EnvioFormData } from './schema'
+import PanelEstado from '../eventos/PanelEstado'
 import { t } from '../../textos/es'
 
 type Envio = Tables<'envios'>
@@ -62,7 +63,6 @@ function SkeletonDetalle() {
 
 export default function DetalleEnvioPage() {
   const { id } = useParams<{ id: string }>()
-  const navigate = useNavigate()
   const { perfil } = useAuth()
 
   const [envio, setEnvio] = useState<Envio | null>(null)
@@ -70,12 +70,49 @@ export default function DetalleEnvioPage() {
   const [cargando, setCargando] = useState(true)
   const [noEncontrado, setNoEncontrado] = useState(false)
   const [editando, setEditando] = useState(false)
-
-  const [eliminando, setEliminando] = useState(false)
-  const [confirmInput, setConfirmInput] = useState('')
-  const [errorEliminar, setErrorEliminar] = useState('')
-
   const [copiado, setCopiado] = useState(false)
+
+  // Inactivar / reactivar
+  const [inactivando, setInactivando] = useState(false)
+  const [reactivando, setReactivando] = useState(false)
+  const [motivoInactivar, setMotivoInactivar] = useState('')
+  const [confirmInput, setConfirmInput] = useState('')
+  const [errorInactivar, setErrorInactivar] = useState('')
+  const [guardandoInactivar, setGuardandoInactivar] = useState(false)
+
+  // Panel de estado
+  const [mostrarPanelEstado, setMostrarPanelEstado] = useState(false)
+  const [eventoEditando, setEventoEditando] = useState<Evento | null>(null)
+
+  // Anular evento
+  const [eventoAnulando, setEventoAnulando] = useState<Evento | null>(null)
+  const [motivoAnulacion, setMotivoAnulacion] = useState('')
+  const [errorAnular, setErrorAnular] = useState('')
+  const [guardandoAnular, setGuardandoAnular] = useState(false)
+
+  // ⋯ menu
+  const [menuAbiertoId, setMenuAbiertoId] = useState<string | null>(null)
+  const menuRef = useRef<HTMLDivElement>(null)
+
+  // Perfiles y ediciones
+  const [perfilesMap, setPerfilesMap] = useState<Record<string, string>>({})
+  const [eventosEditados, setEventosEditados] = useState<Set<string>>(new Set())
+
+  // Toast
+  const [toastMsg, setToastMsg] = useState('')
+
+  const esAdmin = perfil?.rol === 'admin'
+
+  useEffect(() => {
+    if (!menuAbiertoId) return
+    function handleClick(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuAbiertoId(null)
+      }
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [menuAbiertoId])
 
   const cargar = useCallback(async () => {
     if (!id) return
@@ -92,16 +129,53 @@ export default function DetalleEnvioPage() {
 
     if (errEnvio || !envioData) {
       setNoEncontrado(true)
-    } else {
-      setEnvio(envioData)
-      setEventos(eventosData ?? [])
+      setCargando(false)
+      return
     }
+
+    setEnvio(envioData)
+    setEventos(eventosData ?? [])
+
+    const allIds = [
+      envioData.creado_por,
+      envioData.inactivado_por,
+      ...(eventosData ?? []).map(e => e.creado_por),
+      ...(eventosData ?? []).map(e => e.anulado_por),
+    ]
+    const uniqueIds = [...new Set(allIds.filter((x): x is string => x !== null && x !== undefined))]
+    if (uniqueIds.length > 0) {
+      const { data: perfilesData } = await supabase
+        .from('perfiles')
+        .select('id, nombre')
+        .in('id', uniqueIds)
+      if (perfilesData) {
+        const map: Record<string, string> = {}
+        for (const p of perfilesData) map[p.id] = p.nombre
+        setPerfilesMap(map)
+      }
+    }
+
+    if (perfil?.rol === 'admin' && (eventosData ?? []).length > 0) {
+      const { data: auds } = await supabase
+        .from('auditoria')
+        .select('registro_id')
+        .eq('tabla', 'eventos_envio')
+        .eq('accion', 'UPDATE')
+        .in('registro_id', (eventosData ?? []).map(e => e.id))
+      setEventosEditados(new Set(auds?.map(a => a.registro_id) ?? []))
+    }
+
     setCargando(false)
-  }, [id])
+  }, [id, perfil?.rol])
 
   useEffect(() => {
     cargar()
   }, [cargar])
+
+  function mostrarToast(msg: string) {
+    setToastMsg(msg)
+    setTimeout(() => setToastMsg(''), 3500)
+  }
 
   async function copiarGuia() {
     if (!envio) return
@@ -129,15 +203,59 @@ export default function DetalleEnvioPage() {
     setEditando(false)
   }
 
-  async function handleEliminar() {
+  async function handleInactivar() {
     if (!id) return
-    setErrorEliminar('')
-    const { error } = await supabase.from('envios').delete().eq('id', id)
+    setErrorInactivar('')
+    setGuardandoInactivar(true)
+    const { error } = await supabase.rpc('inactivar_envio', {
+      p_envio_id: id,
+      p_motivo: motivoInactivar.trim(),
+    })
     if (error) {
-      setErrorEliminar(error.message)
+      setErrorInactivar(error.message)
+      setGuardandoInactivar(false)
       return
     }
-    navigate('/admin/envios')
+    setInactivando(false)
+    setMotivoInactivar('')
+    setConfirmInput('')
+    setGuardandoInactivar(false)
+    await cargar()
+  }
+
+  async function handleReactivar() {
+    if (!id) return
+    const { error } = await supabase.rpc('reactivar_envio', { p_envio_id: id })
+    if (error) return
+    setReactivando(false)
+    await cargar()
+  }
+
+  async function handleAnularEvento() {
+    if (!eventoAnulando) return
+    setErrorAnular('')
+    setGuardandoAnular(true)
+    const { error } = await supabase.rpc('anular_evento', {
+      p_evento_id: eventoAnulando.id,
+      p_motivo: motivoAnulacion.trim(),
+    })
+    if (error) {
+      setErrorAnular(error.message)
+      setGuardandoAnular(false)
+      return
+    }
+    setEventoAnulando(null)
+    setMotivoAnulacion('')
+    setGuardandoAnular(false)
+    await cargar()
+  }
+
+  async function onPanelGuardado() {
+    const wasEditing = !!eventoEditando
+    setMostrarPanelEstado(false)
+    setEventoEditando(null)
+    mostrarToast(wasEditing ? t.eventos.exitoEdicion : t.eventos.exito)
+    await cargar()
   }
 
   if (cargando) return <SkeletonDetalle />
@@ -168,7 +286,12 @@ export default function DetalleEnvioPage() {
   if (!envio) return null
 
   const guiaFormateada = formatearGuia(envio.guia)
-  const esAdmin = perfil?.rol === 'admin'
+
+  const camposIncompletos: string[] = []
+  if (!envio.destinatario_telefono) camposIncompletos.push(t.envios.formulario.telefono + ' (destinatario)')
+  if (!envio.destinatario_direccion) camposIncompletos.push(t.envios.formulario.direccion + ' (destinatario)')
+  if (!envio.descripcion_contenido) camposIncompletos.push(t.envios.formulario.descripcion)
+  if (!envio.peso_kg) camposIncompletos.push(t.envios.formulario.peso)
 
   const defaultValuesEdicion: Partial<EnvioFormData> = {
     remitente_nombre: envio.remitente_nombre,
@@ -177,7 +300,6 @@ export default function DetalleEnvioPage() {
     remitente_direccion: envio.remitente_direccion ?? '',
     remitente_pais: envio.remitente_pais,
     remitente_ciudad: envio.remitente_ciudad,
-
     destinatario_nombre: envio.destinatario_nombre,
     destinatario_telefono: envio.destinatario_telefono ?? '',
     destinatario_email: envio.destinatario_email ?? '',
@@ -185,7 +307,6 @@ export default function DetalleEnvioPage() {
     destinatario_direccion: envio.destinatario_direccion ?? '',
     destinatario_pais: envio.destinatario_pais,
     destinatario_ciudad: envio.destinatario_ciudad,
-
     descripcion_contenido: envio.descripcion_contenido ?? '',
     peso_kg: envio.peso_kg ?? undefined,
     largo_cm: envio.largo_cm ?? undefined,
@@ -196,6 +317,10 @@ export default function DetalleEnvioPage() {
     tipo_servicio: envio.tipo_servicio,
     fecha_estimada_entrega: envio.fecha_estimada_entrega ?? '',
   }
+
+  const puedeInactivar =
+    motivoInactivar.trim().length > 0 &&
+    confirmInput.toUpperCase().replace(/-/g, '').trim() === envio.guia
 
   if (editando) {
     return (
@@ -217,17 +342,18 @@ export default function DetalleEnvioPage() {
           textoCargando={t.envios.formulario.cargandoEdicion}
           onCancelar={() => setEditando(false)}
           storageKey={`borrador-edicion-${id}`}
+          camposIncompletos={camposIncompletos}
         />
       </div>
     )
   }
 
-  const puedeEliminar =
-    confirmInput.toUpperCase().replace(/-/g, '').trim() === envio.guia
+  const nombreInactivador = envio.inactivado_por
+    ? (perfilesMap[envio.inactivado_por] ?? '?')
+    : '?'
 
   return (
     <div className="p-6 lg:p-8 max-w-4xl">
-      {/* Back nav */}
       <div className="flex items-center gap-3 mb-6">
         <Link
           to="/admin/envios"
@@ -239,12 +365,43 @@ export default function DetalleEnvioPage() {
         <h1 className="text-xl font-semibold text-ink">Detalle del envío</h1>
       </div>
 
+      {/* Inactive banner */}
+      {!envio.activo && (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-5">
+          <div className="flex items-start justify-between gap-3">
+            <p className="text-sm text-amber-800">
+              {t.envios.bannnerInactivo(
+                formatearFechaHora(envio.inactivado_en!),
+                nombreInactivador,
+                envio.motivo_inactivacion ?? '',
+              )}
+            </p>
+            {esAdmin && (
+              <button
+                onClick={() => setReactivando(true)}
+                className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-amber-700 border border-amber-300 rounded-lg hover:bg-amber-100 cursor-pointer transition-colors"
+              >
+                <RefreshCw size={13} strokeWidth={2} />
+                {t.envios.reactivarBoton}
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Incomplete data warning */}
+      {camposIncompletos.length > 0 && (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 mb-5">
+          <p className="text-sm text-amber-800">{t.envios.datosFaltantes(camposIncompletos)}</p>
+        </div>
+      )}
+
       {/* Header card */}
       <div className="bg-surface border border-border rounded-xl p-5 mb-6">
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
           <div>
             <div className="flex items-center gap-2 mb-2">
-              <span className="font-mono text-2xl font-semibold text-navy tracking-wider">
+              <span className={`font-mono text-2xl font-semibold text-navy tracking-wider ${!envio.activo ? 'opacity-50' : ''}`}>
                 {guiaFormateada}
               </span>
               <button
@@ -261,28 +418,40 @@ export default function DetalleEnvioPage() {
             </div>
             <div className="flex items-center gap-3 flex-wrap">
               <BadgeEstado estado={envio.estado_actual} />
+              {!envio.activo && (
+                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-slate-200 text-slate-700">
+                  {t.envios.etiquetaInactivo}
+                </span>
+              )}
               <span className="text-xs text-ink-muted">
                 Creado el {formatearFechaHora(envio.created_at)}
               </span>
             </div>
           </div>
 
-          {/* Action buttons */}
-          <div className="flex items-center gap-2 flex-shrink-0">
+          <div className="flex items-center gap-2 flex-shrink-0 flex-wrap">
+            {envio.activo && (
+              <button
+                onClick={() => { setEventoEditando(null); setMostrarPanelEstado(true) }}
+                className="flex items-center gap-1.5 px-3 py-2 bg-navy text-white rounded-lg text-sm font-semibold hover:bg-navy/90 transition-colors cursor-pointer"
+              >
+                {t.eventos.actualizarEstado}
+              </button>
+            )}
             <button
               onClick={() => setEditando(true)}
-              className="flex items-center gap-1.5 px-3 py-2 border border-border rounded-lg text-sm text-ink hover:bg-canvas transition-colors cursor-pointer"
+              disabled={!envio.activo}
+              className="flex items-center gap-1.5 px-3 py-2 border border-border rounded-lg text-sm text-ink hover:bg-canvas disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
             >
               <Pencil size={14} strokeWidth={2} />
               {t.comun.editar}
             </button>
-            {esAdmin && (
+            {esAdmin && envio.activo && (
               <button
-                onClick={() => setEliminando(true)}
-                className="flex items-center gap-1.5 px-3 py-2 border border-red-200 text-red-600 rounded-lg text-sm hover:bg-red-50 transition-colors cursor-pointer"
+                onClick={() => setInactivando(true)}
+                className="flex items-center gap-1.5 px-3 py-2 border border-amber-300 text-amber-700 rounded-lg text-sm hover:bg-amber-50 transition-colors cursor-pointer"
               >
-                <Trash2 size={14} strokeWidth={2} />
-                {t.comun.eliminar}
+                {t.envios.inactivarTitulo}
               </button>
             )}
           </div>
@@ -370,33 +539,99 @@ export default function DetalleEnvioPage() {
           <div className="space-y-0">
             {eventos.map((ev, idx) => {
               const info = ESTADOS[ev.estado]
+              const anuladorNombre = ev.anulado_por
+                ? (perfilesMap[ev.anulado_por] ?? '?')
+                : '?'
+              const fueEditado = eventosEditados.has(ev.id)
+              const esMenuVisible = !ev.anulado && (perfil?.rol === 'admin' || perfil?.rol === 'operador')
+              const puedeAnular = esAdmin && ev.estado !== 'guia_generada' && !ev.anulado
+
               return (
-                <div key={ev.id} className="flex gap-4">
-                  {/* Indicator column */}
+                <div key={ev.id} className={`flex gap-4 ${ev.anulado ? 'opacity-60' : ''}`}>
                   <div className="flex flex-col items-center flex-shrink-0">
                     <div
-                      className={`w-3 h-3 rounded-full flex-shrink-0 mt-1 ring-2 ring-surface ${info.colorFondo}`}
+                      className={`w-3 h-3 rounded-full flex-shrink-0 mt-1 ring-2 ring-surface ${
+                        ev.anulado ? 'bg-slate-300' : info.colorFondo
+                      }`}
                     />
                     {idx < eventos.length - 1 && (
                       <div className="w-px flex-1 bg-border my-1" />
                     )}
                   </div>
 
-                  {/* Content */}
                   <div className={`min-w-0 flex-1 ${idx < eventos.length - 1 ? 'pb-5' : ''}`}>
-                    <div className="flex items-center gap-2 flex-wrap mb-1">
-                      <BadgeEstado estado={ev.estado} size="sm" />
-                      <span className="text-xs text-ink-muted">
-                        {formatearFechaHora(ev.ocurrido_en)}
-                      </span>
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center gap-2 flex-wrap mb-1">
+                        <span className={ev.anulado ? 'line-through' : ''}>
+                          <BadgeEstado estado={ev.estado} size="sm" />
+                        </span>
+                        <span className="text-xs text-ink-muted">
+                          {formatearFechaHora(ev.ocurrido_en)}
+                        </span>
+                        {fueEditado && !ev.anulado && (
+                          <span className="text-xs text-ink-muted italic">
+                            · {t.eventos.eventoEditado}
+                          </span>
+                        )}
+                      </div>
+                      {esMenuVisible && (
+                        <div
+                          className="relative flex-shrink-0"
+                          ref={menuAbiertoId === ev.id ? menuRef : undefined}
+                        >
+                          <button
+                            onClick={e => {
+                              e.stopPropagation()
+                              setMenuAbiertoId(menuAbiertoId === ev.id ? null : ev.id)
+                            }}
+                            className="p-1 rounded-md text-ink-muted hover:text-ink hover:bg-canvas transition-colors cursor-pointer"
+                            aria-label="Opciones"
+                          >
+                            <MoreHorizontal size={15} />
+                          </button>
+                          {menuAbiertoId === ev.id && (
+                            <div className="absolute right-0 top-full mt-1 w-36 bg-surface border border-border rounded-lg shadow-lg z-20 py-1">
+                              {!ev.anulado && (
+                                <button
+                                  onClick={() => {
+                                    setMenuAbiertoId(null)
+                                    setEventoEditando(ev)
+                                    setMostrarPanelEstado(true)
+                                  }}
+                                  className="w-full px-3 py-2 text-sm text-ink text-left hover:bg-canvas cursor-pointer"
+                                >
+                                  {t.eventos.menuEditar}
+                                </button>
+                              )}
+                              {puedeAnular && (
+                                <button
+                                  onClick={() => {
+                                    setMenuAbiertoId(null)
+                                    setEventoAnulando(ev)
+                                  }}
+                                  className="w-full px-3 py-2 text-sm text-red-600 text-left hover:bg-red-50 cursor-pointer"
+                                >
+                                  {t.eventos.menuAnular}
+                                </button>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
-                    {ev.ubicacion && (
+
+                    {ev.anulado && (
+                      <p className="text-xs text-ink-muted mt-0.5 italic">
+                        {t.eventos.eventoAnulado(anuladorNombre, ev.motivo_anulacion ?? '')}
+                      </p>
+                    )}
+                    {!ev.anulado && ev.ubicacion && (
                       <p className="text-sm text-ink mt-1">{ev.ubicacion}</p>
                     )}
-                    {ev.nota_publica && (
+                    {!ev.anulado && ev.nota_publica && (
                       <p className="text-sm text-ink-muted mt-1">{ev.nota_publica}</p>
                     )}
-                    {ev.nota_interna && (
+                    {!ev.anulado && ev.nota_interna && (
                       <div className="mt-2 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
                         <p className="text-xs font-semibold text-amber-800 mb-0.5">
                           {t.envios.detalleNotaInterna}
@@ -412,8 +647,22 @@ export default function DetalleEnvioPage() {
         )}
       </div>
 
-      {/* Delete modal */}
-      {eliminando && (
+      {/* Panel de estado */}
+      {mostrarPanelEstado && (
+        <PanelEstado
+          envioId={envio.id}
+          estadoActual={envio.estado_actual}
+          eventoEditar={eventoEditando}
+          onClose={() => {
+            setMostrarPanelEstado(false)
+            setEventoEditando(null)
+          }}
+          onGuardado={onPanelGuardado}
+        />
+      )}
+
+      {/* Modal inactivar */}
+      {inactivando && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4"
           style={{ background: 'rgba(0,0,0,0.45)' }}
@@ -422,49 +671,154 @@ export default function DetalleEnvioPage() {
             className="bg-surface rounded-xl w-full max-w-md p-6"
             style={{ boxShadow: '0 8px 32px rgba(0,0,0,0.18)' }}
           >
-            <h2 className="text-base font-semibold text-ink mb-2">{t.envios.eliminarTitulo}</h2>
-            <p className="text-sm text-ink-muted mb-4">{t.envios.eliminarAdvertencia}</p>
+            <h2 className="text-base font-semibold text-ink mb-2">{t.envios.inactivarTitulo}</h2>
+            <p className="text-sm text-ink-muted mb-4">{t.envios.inactivarAdvertencia}</p>
 
-            <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3 mb-4 text-center">
-              <span className="font-mono font-semibold text-red-700">{guiaFormateada}</span>
+            <label className="block text-sm font-semibold text-ink mb-1.5">
+              {t.envios.inactivarMotivoLabel}
+            </label>
+            <textarea
+              value={motivoInactivar}
+              onChange={e => setMotivoInactivar(e.target.value)}
+              placeholder={t.envios.inactivarMotivoPlaceholder}
+              rows={3}
+              className="w-full px-3 py-2.5 border border-border rounded-lg text-sm mb-4 resize-none focus:outline-none focus:ring-2 focus:ring-amber-300/40 focus:border-amber-400"
+            />
+
+            <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 mb-4 text-center">
+              <span className="font-mono font-semibold text-amber-700">{guiaFormateada}</span>
             </div>
 
             <label className="block text-sm font-semibold text-ink mb-1.5">
-              {t.envios.eliminarConfirmarLabel}
+              {t.envios.inactivarConfirmarLabel}
             </label>
             <input
               type="text"
               value={confirmInput}
               onChange={e => setConfirmInput(e.target.value)}
               placeholder={guiaFormateada}
-              className="w-full px-3 py-2.5 border border-border rounded-lg text-sm mb-4 focus:outline-none focus:ring-2 focus:ring-red-300/40 focus:border-red-400"
               autoFocus
+              className="w-full px-3 py-2.5 border border-border rounded-lg text-sm mb-4 focus:outline-none focus:ring-2 focus:ring-amber-300/40 focus:border-amber-400"
             />
 
-            {errorEliminar && (
-              <p className="text-xs text-red-600 mb-3">{errorEliminar}</p>
+            {errorInactivar && (
+              <p className="text-xs text-red-600 mb-3">{errorInactivar}</p>
             )}
 
             <div className="flex gap-2">
               <button
-                onClick={handleEliminar}
-                disabled={!puedeEliminar}
-                className="flex-1 py-2.5 bg-red-600 text-white text-sm font-semibold rounded-lg hover:bg-red-700 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition-colors"
+                onClick={handleInactivar}
+                disabled={!puedeInactivar || guardandoInactivar}
+                className="flex-1 py-2.5 bg-amber-600 text-white text-sm font-semibold rounded-lg hover:bg-amber-700 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition-colors"
               >
-                {t.envios.eliminarConfirmarBoton}
+                {guardandoInactivar ? t.envios.inactivarCargando : t.envios.inactivarConfirmarBoton}
               </button>
               <button
                 onClick={() => {
-                  setEliminando(false)
+                  setInactivando(false)
+                  setMotivoInactivar('')
                   setConfirmInput('')
-                  setErrorEliminar('')
+                  setErrorInactivar('')
                 }}
+                disabled={guardandoInactivar}
                 className="flex-1 py-2.5 border border-border text-ink text-sm rounded-lg hover:bg-canvas cursor-pointer transition-colors"
               >
                 {t.comun.cancelar}
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Modal reactivar */}
+      {reactivando && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ background: 'rgba(0,0,0,0.45)' }}
+        >
+          <div
+            className="bg-surface rounded-xl w-full max-w-sm p-6"
+            style={{ boxShadow: '0 8px 32px rgba(0,0,0,0.18)' }}
+          >
+            <h2 className="text-base font-semibold text-ink mb-2">{t.envios.reactivarTitulo}</h2>
+            <p className="text-sm text-ink-muted mb-5">{t.envios.reactivarConfirmar}</p>
+            <div className="flex gap-2">
+              <button
+                onClick={handleReactivar}
+                className="flex-1 py-2.5 bg-navy text-white text-sm font-semibold rounded-lg hover:bg-navy/90 cursor-pointer transition-colors"
+              >
+                {t.envios.reactivarBoton}
+              </button>
+              <button
+                onClick={() => setReactivando(false)}
+                className="flex-1 py-2.5 border border-border text-ink text-sm rounded-lg hover:bg-canvas cursor-pointer transition-colors"
+              >
+                {t.comun.cancelar}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal anular evento */}
+      {eventoAnulando && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ background: 'rgba(0,0,0,0.45)' }}
+        >
+          <div
+            className="bg-surface rounded-xl w-full max-w-md p-6"
+            style={{ boxShadow: '0 8px 32px rgba(0,0,0,0.18)' }}
+          >
+            <h2 className="text-base font-semibold text-ink mb-2">{t.eventos.anularTitulo}</h2>
+            <p className="text-sm text-ink-muted mb-4">{t.eventos.anularAdvertencia}</p>
+
+            <label className="block text-sm font-semibold text-ink mb-1.5">
+              {t.eventos.anularMotivoLabel}
+            </label>
+            <textarea
+              value={motivoAnulacion}
+              onChange={e => setMotivoAnulacion(e.target.value)}
+              placeholder={t.eventos.anularMotivoPlaceholder}
+              rows={3}
+              autoFocus
+              className="w-full px-3 py-2.5 border border-border rounded-lg text-sm mb-4 resize-none focus:outline-none focus:ring-2 focus:ring-red-300/40 focus:border-red-400"
+            />
+
+            {errorAnular && (
+              <p className="text-xs text-red-600 mb-3">{errorAnular}</p>
+            )}
+
+            <div className="flex gap-2">
+              <button
+                onClick={handleAnularEvento}
+                disabled={!motivoAnulacion.trim() || guardandoAnular}
+                className="flex-1 py-2.5 bg-red-600 text-white text-sm font-semibold rounded-lg hover:bg-red-700 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition-colors"
+              >
+                {guardandoAnular ? t.eventos.anularCargando : t.eventos.anularBoton}
+              </button>
+              <button
+                onClick={() => {
+                  setEventoAnulando(null)
+                  setMotivoAnulacion('')
+                  setErrorAnular('')
+                }}
+                disabled={guardandoAnular}
+                className="flex-1 py-2.5 border border-border text-ink text-sm rounded-lg hover:bg-canvas cursor-pointer transition-colors"
+              >
+                {t.comun.cancelar}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Toast */}
+      {toastMsg && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-ink text-white text-sm font-medium px-5 py-3 rounded-xl pointer-events-none"
+          style={{ boxShadow: '0 4px 16px rgba(0,0,0,0.2)' }}
+        >
+          {toastMsg}
         </div>
       )}
     </div>

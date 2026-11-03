@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Plus, Search } from 'lucide-react'
+import { Plus, Search, X } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { type Tables } from '../../lib/supabase'
 import { ESTADOS, ESTADOS_EXCEPCION, FLUJO_NORMAL, type EstadoEnvio } from '../../lib/estados'
@@ -8,6 +8,7 @@ import { formatearGuia } from '../../lib/guia'
 import { formatearFechaHora } from '../../lib/formato'
 import BadgeEstado from '../../components/BadgeEstado'
 import { SkeletonFilaTabla, SkeletonTarjeta } from '../../components/Skeleton'
+import PanelEstado, { type EnvioParaMasivo } from '../eventos/PanelEstado'
 import { t } from '../../textos/es'
 
 type Fila = Pick<
@@ -20,13 +21,15 @@ type Fila = Pick<
   | 'estado_actual'
   | 'tipo_servicio'
   | 'created_at'
+  | 'activo'
 >
 
 type Filtro = 'todos' | 'excepciones' | EstadoEnvio
+type FiltroActividad = 'activos' | 'inactivos' | 'todos'
 
 const POR_PAGINA = 20
 const COLS =
-  'id, guia, destinatario_nombre, destinatario_ciudad, destinatario_pais, estado_actual, tipo_servicio, created_at'
+  'id, guia, destinatario_nombre, destinatario_ciudad, destinatario_pais, estado_actual, tipo_servicio, created_at, activo'
 
 export default function EnviosPage() {
   const navigate = useNavigate()
@@ -34,10 +37,16 @@ export default function EnviosPage() {
   const [busquedaInput, setBusquedaInput] = useState('')
   const [busquedaFinal, setBusquedaFinal] = useState('')
   const [filtro, setFiltro] = useState<Filtro>('todos')
+  const [filtroActividad, setFiltroActividad] = useState<FiltroActividad>('activos')
   const [pagina, setPagina] = useState(0)
   const [filas, setFilas] = useState<Fila[]>([])
   const [total, setTotal] = useState(0)
   const [cargando, setCargando] = useState(true)
+  const [refreshKey, setRefreshKey] = useState(0)
+
+  const [seleccionados, setSeleccionados] = useState<Set<string>>(new Set())
+  const [mostrarPanelMasivo, setMostrarPanelMasivo] = useState(false)
+  const [toastMsg, setToastMsg] = useState('')
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -51,6 +60,16 @@ export default function EnviosPage() {
     setFiltro(f)
     setPagina(0)
   }
+
+  function cambiarFiltroActividad(f: FiltroActividad) {
+    setFiltroActividad(f)
+    setPagina(0)
+  }
+
+  // Clear selection when page/filters change
+  useEffect(() => {
+    setSeleccionados(new Set())
+  }, [busquedaFinal, filtro, filtroActividad, pagina])
 
   useEffect(() => {
     let cancelado = false
@@ -66,6 +85,9 @@ export default function EnviosPage() {
         .select(COLS, { count: 'exact' })
         .order('created_at', { ascending: false })
         .range(desde, hasta)
+
+      if (filtroActividad === 'activos') q = q.eq('activo', true)
+      else if (filtroActividad === 'inactivos') q = q.eq('activo', false)
 
       if (busquedaFinal.trim()) {
         const guiaNorm = busquedaFinal.toUpperCase().replace(/[-\s]/g, '')
@@ -93,13 +115,62 @@ export default function EnviosPage() {
     return () => {
       cancelado = true
     }
-  }, [busquedaFinal, filtro, pagina])
+  }, [busquedaFinal, filtro, filtroActividad, pagina, refreshKey])
 
   const inicio = pagina * POR_PAGINA + 1
   const fin = Math.min((pagina + 1) * POR_PAGINA, total)
   const hayAnterior = pagina > 0
   const haySiguiente = fin < total
-  const hayBusqueda = busquedaFinal.trim() !== '' || filtro !== 'todos'
+  const hayBusqueda = busquedaFinal.trim() !== '' || filtro !== 'todos' || filtroActividad !== 'activos'
+
+  const filaActivasEnPagina = filas.filter(f => f.activo)
+  const todasActiasSeleccionadas =
+    filaActivasEnPagina.length > 0 && filaActivasEnPagina.every(f => seleccionados.has(f.id))
+
+  function toggleSeleccion(id: string) {
+    setSeleccionados(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  function toggleTodos() {
+    const ids = filaActivasEnPagina.map(f => f.id)
+    if (todasActiasSeleccionadas) {
+      setSeleccionados(prev => {
+        const next = new Set(prev)
+        ids.forEach(id => next.delete(id))
+        return next
+      })
+    } else {
+      setSeleccionados(prev => {
+        const next = new Set(prev)
+        ids.forEach(id => next.add(id))
+        return next
+      })
+    }
+  }
+
+  function mostrarToast(msg: string) {
+    setToastMsg(msg)
+    setTimeout(() => setToastMsg(''), 4000)
+  }
+
+  function onResultadoMasivo(resultado?: { actualizados: number; omitidos: number }) {
+    setMostrarPanelMasivo(false)
+    setSeleccionados(new Set())
+    if (resultado) {
+      mostrarToast(t.eventos.resultadoMasivo(resultado.actualizados, resultado.omitidos))
+    }
+    setRefreshKey(k => k + 1)
+  }
+
+  const conteoSeleccionados = seleccionados.size
+  const enviosMasivo: EnvioParaMasivo[] = filas
+    .filter(f => seleccionados.has(f.id))
+    .map(f => ({ id: f.id, estado_actual: f.estado_actual }))
 
   function EstadoVacio() {
     return (
@@ -151,6 +222,15 @@ export default function EnviosPage() {
           />
         </div>
         <select
+          value={filtroActividad}
+          onChange={e => cambiarFiltroActividad(e.target.value as FiltroActividad)}
+          className="px-3 py-2 border border-border rounded-lg text-sm bg-surface text-ink focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent cursor-pointer"
+        >
+          <option value="activos">{t.envios.filtroActivos}</option>
+          <option value="inactivos">{t.envios.filtroInactivos}</option>
+          <option value="todos">{t.envios.filtroTodosActividad}</option>
+        </select>
+        <select
           value={filtro}
           onChange={e => cambiarFiltro(e.target.value as Filtro)}
           className="px-3 py-2 border border-border rounded-lg text-sm bg-surface text-ink focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent cursor-pointer"
@@ -179,6 +259,16 @@ export default function EnviosPage() {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-border bg-canvas">
+              <th className="px-4 py-3 w-10">
+                <input
+                  type="checkbox"
+                  checked={todasActiasSeleccionadas}
+                  onChange={toggleTodos}
+                  disabled={filaActivasEnPagina.length === 0}
+                  aria-label={t.comun.seleccionarTodos}
+                  className="cursor-pointer disabled:cursor-not-allowed"
+                />
+              </th>
               <th className="px-4 py-3 text-left text-xs font-semibold text-ink-muted uppercase tracking-wide">
                 {t.envios.columnaGuia}
               </th>
@@ -204,7 +294,7 @@ export default function EnviosPage() {
               Array.from({ length: 6 }).map((_, i) => <SkeletonFilaTabla key={i} />)
             ) : filas.length === 0 ? (
               <tr>
-                <td colSpan={6}>
+                <td colSpan={7} className="p-0">
                   <EstadoVacio />
                 </td>
               </tr>
@@ -212,9 +302,26 @@ export default function EnviosPage() {
               filas.map(fila => (
                 <tr
                   key={fila.id}
-                  className="border-b border-border last:border-0 hover:bg-canvas transition-colors cursor-pointer"
+                  className={`border-b border-border last:border-0 transition-colors ${
+                    fila.activo
+                      ? 'hover:bg-canvas cursor-pointer'
+                      : 'opacity-60 cursor-pointer'
+                  }`}
                   onClick={() => navigate(`/admin/envios/${fila.id}`)}
                 >
+                  <td
+                    className="px-4 py-3.5"
+                    onClick={e => e.stopPropagation()}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={seleccionados.has(fila.id)}
+                      onChange={() => toggleSeleccion(fila.id)}
+                      disabled={!fila.activo}
+                      className="cursor-pointer disabled:cursor-not-allowed"
+                      aria-label={`Seleccionar ${fila.guia}`}
+                    />
+                  </td>
                   <td className="px-4 py-3.5">
                     <span className="font-mono font-medium text-navy text-sm">
                       {formatearGuia(fila.guia)}
@@ -225,7 +332,14 @@ export default function EnviosPage() {
                     {fila.destinatario_ciudad}, {fila.destinatario_pais}
                   </td>
                   <td className="px-4 py-3.5">
-                    <BadgeEstado estado={fila.estado_actual} />
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <BadgeEstado estado={fila.estado_actual} />
+                      {!fila.activo && (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-slate-200 text-slate-600">
+                          {t.envios.etiquetaInactivo}
+                        </span>
+                      )}
+                    </div>
                   </td>
                   <td className="px-4 py-3.5 text-ink-muted hidden lg:table-cell">
                     {fila.tipo_servicio === 'estandar' ? 'Estándar' : 'Express'}
@@ -250,22 +364,46 @@ export default function EnviosPage() {
           </div>
         ) : (
           filas.map(fila => (
-            <Link
+            <div
               key={fila.id}
-              to={`/admin/envios/${fila.id}`}
-              className="block bg-surface border border-border rounded-lg p-4 hover:border-navy/30 transition-colors"
+              className={`bg-surface border border-border rounded-lg p-4 transition-colors ${
+                fila.activo ? 'hover:border-navy/30' : 'opacity-60'
+              }`}
             >
-              <div className="flex items-start justify-between gap-2 mb-1.5">
-                <span className="font-mono font-medium text-navy text-sm">
-                  {formatearGuia(fila.guia)}
-                </span>
-                <BadgeEstado estado={fila.estado_actual} size="sm" />
+              <div className="flex items-start gap-3">
+                <input
+                  type="checkbox"
+                  checked={seleccionados.has(fila.id)}
+                  onChange={() => toggleSeleccion(fila.id)}
+                  disabled={!fila.activo}
+                  className="mt-1 cursor-pointer disabled:cursor-not-allowed flex-shrink-0"
+                  aria-label={`Seleccionar ${fila.guia}`}
+                  onClick={e => e.stopPropagation()}
+                />
+                <Link
+                  to={`/admin/envios/${fila.id}`}
+                  className="min-w-0 flex-1"
+                >
+                  <div className="flex items-start justify-between gap-2 mb-1.5">
+                    <span className="font-mono font-medium text-navy text-sm">
+                      {formatearGuia(fila.guia)}
+                    </span>
+                    <div className="flex items-center gap-1 flex-wrap justify-end">
+                      <BadgeEstado estado={fila.estado_actual} size="sm" />
+                      {!fila.activo && (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-slate-200 text-slate-600">
+                          {t.envios.etiquetaInactivo}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <p className="text-sm text-ink font-medium mb-0.5">{fila.destinatario_nombre}</p>
+                  <p className="text-xs text-ink-muted">
+                    {fila.destinatario_ciudad}, {fila.destinatario_pais}
+                  </p>
+                </Link>
               </div>
-              <p className="text-sm text-ink font-medium mb-0.5">{fila.destinatario_nombre}</p>
-              <p className="text-xs text-ink-muted">
-                {fila.destinatario_ciudad}, {fila.destinatario_pais}
-              </p>
-            </Link>
+            </div>
           ))
         )}
       </div>
@@ -290,6 +428,50 @@ export default function EnviosPage() {
               {t.envios.paginaSiguiente}
             </button>
           </div>
+        </div>
+      )}
+
+      {/* Bulk action bar */}
+      {conteoSeleccionados > 0 && (
+        <div className="fixed bottom-0 left-0 right-0 z-30 bg-navy text-white px-6 py-3 flex items-center gap-4 flex-wrap"
+          style={{ boxShadow: '0 -2px 12px rgba(0,0,0,0.15)' }}
+        >
+          <span className="text-sm font-medium flex-1 min-w-0">
+            {t.eventos.seleccionados(conteoSeleccionados)}
+          </span>
+          <button
+            onClick={() => setMostrarPanelMasivo(true)}
+            className="flex-shrink-0 px-4 py-2 bg-white text-navy text-sm font-semibold rounded-lg hover:bg-canvas cursor-pointer transition-colors"
+          >
+            {t.eventos.actualizarMasivo}
+          </button>
+          <button
+            onClick={() => setSeleccionados(new Set())}
+            className="flex-shrink-0 p-2 text-white/80 hover:text-white cursor-pointer transition-colors"
+            aria-label={t.eventos.limpiarSeleccion}
+          >
+            <X size={16} />
+          </button>
+        </div>
+      )}
+
+      {/* Panel masivo */}
+      {mostrarPanelMasivo && (
+        <PanelEstado
+          modoMasivo
+          enviosMasivo={enviosMasivo}
+          onClose={() => setMostrarPanelMasivo(false)}
+          onGuardado={onResultadoMasivo}
+        />
+      )}
+
+      {/* Toast */}
+      {toastMsg && (
+        <div
+          className="fixed bottom-16 left-1/2 -translate-x-1/2 z-50 bg-ink text-white text-sm font-medium px-5 py-3 rounded-xl pointer-events-none"
+          style={{ boxShadow: '0 4px 16px rgba(0,0,0,0.2)' }}
+        >
+          {toastMsg}
         </div>
       )}
     </div>

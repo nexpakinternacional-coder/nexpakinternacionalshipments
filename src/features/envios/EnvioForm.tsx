@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { type Resolver, useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { envioSchema, type EnvioFormData } from './schema'
@@ -12,6 +12,8 @@ interface EnvioFormProps {
   textoCargando?: string
   onCancelar?: () => void
   storageKey?: string
+  /** Lista de campos vacíos que deberían tener valor (para avisar al usuario). */
+  camposIncompletos?: string[]
 }
 
 function leerBorrador(key: string): Partial<EnvioFormData> | null {
@@ -29,6 +31,19 @@ function borrarBorrador(key: string) {
   } catch {
     // ignorar
   }
+}
+
+/** Verifica si dos objetos de valores de formulario son equivalentes (para comparar borrador vs datos guardados). */
+function valoresSonIguales(
+  a: Partial<EnvioFormData>,
+  b: Partial<EnvioFormData>,
+): boolean {
+  const keysA = Object.keys(a) as (keyof EnvioFormData)[]
+  return keysA.every(k => {
+    const va = a[k] ?? ''
+    const vb = b[k] ?? ''
+    return String(va) === String(vb)
+  })
 }
 
 const inputCls = (err?: string) =>
@@ -84,6 +99,13 @@ function Field({
   )
 }
 
+const BASE_DEFAULTS: Partial<EnvioFormData> = {
+  moneda: 'USD',
+  tipo_servicio: 'estandar',
+  remitente_pais: '',
+  destinatario_pais: '',
+}
+
 export default function EnvioForm({
   defaultValues,
   onGuardar,
@@ -91,29 +113,57 @@ export default function EnvioForm({
   textoCargando = t.envios.formulario.cargando,
   onCancelar,
   storageKey,
+  camposIncompletos,
 }: EnvioFormProps) {
-  // Borrador guardado en sessionStorage (red de seguridad ante TOKEN_REFRESHED)
-  const borrador = storageKey ? leerBorrador(storageKey) : null
+  // true = hay datos guardados (modo edición)
+  const esEdicion = !!(defaultValues && Object.keys(defaultValues).length > 0)
+
+  // En modo edición: inicializa con los datos de BD, nunca con el borrador
+  // En modo creación: aplica el borrador sobre los defaultValues
+  const borradorInicial = !esEdicion && storageKey ? leerBorrador(storageKey) : null
+  const valorInicial: Partial<EnvioFormData> = {
+    ...BASE_DEFAULTS,
+    ...defaultValues,
+    ...(borradorInicial ?? {}),
+  }
 
   const {
     register,
     handleSubmit,
     control,
+    reset,
     formState: { errors, isSubmitting },
     setError,
     watch,
   } = useForm<EnvioFormData>({
-    // Cast needed: z.preprocess da input `unknown` en Zod v4, pero los valores del form son EnvioFormData
     resolver: zodResolver(envioSchema) as unknown as Resolver<EnvioFormData>,
-    defaultValues: {
-      moneda: 'USD',
-      tipo_servicio: 'estandar',
-      remitente_pais: '',
-      destinatario_pais: '',
-      ...defaultValues,
-      ...(borrador ?? {}),
-    },
+    defaultValues: valorInicial,
   })
+
+  // En modo edición: sincroniza si llegan nuevos defaultValues (después de cargar de BD)
+  const prevDefaultValuesRef = useRef(defaultValues)
+  useEffect(() => {
+    if (!esEdicion) return
+    if (prevDefaultValuesRef.current === defaultValues) return
+    prevDefaultValuesRef.current = defaultValues
+    reset({ ...BASE_DEFAULTS, ...defaultValues })
+  }, [defaultValues, esEdicion, reset])
+
+  // Banner "borrador disponible" — solo en modo edición, si hay borrador con cambios reales
+  const [ofrecerBorrador, setOfrecerBorrador] = useState(false)
+  useEffect(() => {
+    if (!storageKey || !esEdicion) return
+    const draft = leerBorrador(storageKey)
+    if (!draft) return
+    // Ignorar si el borrador es vacío o igual a los datos guardados
+    if (valoresSonIguales(draft, { ...BASE_DEFAULTS, ...defaultValues })) {
+      borrarBorrador(storageKey)
+    } else {
+      setOfrecerBorrador(true)
+    }
+    // Solo en mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // Persiste el borrador en sessionStorage en cada cambio
   useEffect(() => {
@@ -122,7 +172,7 @@ export default function EnvioForm({
       try {
         sessionStorage.setItem(storageKey, JSON.stringify(values))
       } catch {
-        // ignorar (ej. modo privado con storage desactivado)
+        // ignorar (ej. modo privado)
       }
     })
     return unsubscribe
@@ -144,10 +194,54 @@ export default function EnvioForm({
     onCancelar?.()
   }
 
+  function restaurarBorrador() {
+    const draft = storageKey ? leerBorrador(storageKey) : null
+    if (draft) reset({ ...BASE_DEFAULTS, ...defaultValues, ...draft })
+    setOfrecerBorrador(false)
+  }
+
+  function descartarBorrador() {
+    if (storageKey) borrarBorrador(storageKey)
+    setOfrecerBorrador(false)
+  }
+
   const f = t.envios.formulario
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-8">
+      {/* ── Aviso: datos incompletos ──────────────────────── */}
+      {camposIncompletos && camposIncompletos.length > 0 && (
+        <div role="alert" className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 flex items-start gap-2">
+          <span className="text-amber-500 mt-0.5 flex-shrink-0">⚠</span>
+          <p className="text-sm text-amber-800">
+            {t.envios.datosFaltantes(camposIncompletos)}
+          </p>
+        </div>
+      )}
+
+      {/* ── Aviso: borrador disponible ────────────────────── */}
+      {ofrecerBorrador && (
+        <div role="alert" className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3 flex items-center justify-between gap-3 flex-wrap">
+          <p className="text-sm text-blue-800">{t.envios.borradorDisponible}</p>
+          <div className="flex gap-2 flex-shrink-0">
+            <button
+              type="button"
+              onClick={restaurarBorrador}
+              className="text-xs font-semibold text-blue-700 hover:text-blue-900 cursor-pointer underline"
+            >
+              {t.envios.borradorRestaurar}
+            </button>
+            <button
+              type="button"
+              onClick={descartarBorrador}
+              className="text-xs text-blue-600 hover:text-blue-800 cursor-pointer"
+            >
+              {t.envios.borradorDescartar}
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* ── Remitente ─────────────────────────────────── */}
       <Section title={f.seccionRemitente}>
         <Field id="remitente_nombre" label={f.nombre} error={errors.remitente_nombre?.message} required className="md:col-span-2">

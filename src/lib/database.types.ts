@@ -39,8 +39,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      auditoria: {
+        Row: {
+          accion: string
+          creado_en: string
+          datos_antes: Json | null
+          datos_despues: Json | null
+          id: string
+          registro_id: string
+          tabla: string
+          usuario_id: string | null
+        }
+        Insert: {
+          accion: string
+          creado_en?: string
+          datos_antes?: Json | null
+          datos_despues?: Json | null
+          id?: string
+          registro_id: string
+          tabla: string
+          usuario_id?: string | null
+        }
+        Update: {
+          accion?: string
+          creado_en?: string
+          datos_antes?: Json | null
+          datos_despues?: Json | null
+          id?: string
+          registro_id?: string
+          tabla?: string
+          usuario_id?: string | null
+        }
+        Relationships: []
+      }
       envios: {
         Row: {
+          activo: boolean
           alto_cm: number | null
           ancho_cm: number | null
           creado_por: string | null
@@ -57,8 +91,11 @@ export type Database = {
           fecha_estimada_entrega: string | null
           guia: string
           id: string
+          inactivado_en: string | null
+          inactivado_por: string | null
           largo_cm: number | null
           moneda: string
+          motivo_inactivacion: string | null
           peso_kg: number | null
           remitente_ciudad: string
           remitente_direccion: string | null
@@ -71,6 +108,7 @@ export type Database = {
           valor_declarado: number | null
         }
         Insert: {
+          activo?: boolean
           alto_cm?: number | null
           ancho_cm?: number | null
           creado_por?: string | null
@@ -87,8 +125,11 @@ export type Database = {
           fecha_estimada_entrega?: string | null
           guia?: string
           id?: string
+          inactivado_en?: string | null
+          inactivado_por?: string | null
           largo_cm?: number | null
           moneda?: string
+          motivo_inactivacion?: string | null
           peso_kg?: number | null
           remitente_ciudad: string
           remitente_direccion?: string | null
@@ -101,6 +142,7 @@ export type Database = {
           valor_declarado?: number | null
         }
         Update: {
+          activo?: boolean
           alto_cm?: number | null
           ancho_cm?: number | null
           creado_por?: string | null
@@ -117,8 +159,11 @@ export type Database = {
           fecha_estimada_entrega?: string | null
           guia?: string
           id?: string
+          inactivado_en?: string | null
+          inactivado_por?: string | null
           largo_cm?: number | null
           moneda?: string
+          motivo_inactivacion?: string | null
           peso_kg?: number | null
           remitente_ciudad?: string
           remitente_direccion?: string | null
@@ -134,33 +179,45 @@ export type Database = {
       }
       eventos_envio: {
         Row: {
+          anulado: boolean
+          anulado_en: string | null
+          anulado_por: string | null
           creado_por: string | null
           created_at: string
           envio_id: string
           estado: Database["public"]["Enums"]["estado_envio"]
           id: string
+          motivo_anulacion: string | null
           nota_interna: string | null
           nota_publica: string | null
           ocurrido_en: string
           ubicacion: string | null
         }
         Insert: {
+          anulado?: boolean
+          anulado_en?: string | null
+          anulado_por?: string | null
           creado_por?: string | null
           created_at?: string
           envio_id: string
           estado: Database["public"]["Enums"]["estado_envio"]
           id?: string
+          motivo_anulacion?: string | null
           nota_interna?: string | null
           nota_publica?: string | null
           ocurrido_en?: string
           ubicacion?: string | null
         }
         Update: {
+          anulado?: boolean
+          anulado_en?: string | null
+          anulado_por?: string | null
           creado_por?: string | null
           created_at?: string
           envio_id?: string
           estado?: Database["public"]["Enums"]["estado_envio"]
           id?: string
+          motivo_anulacion?: string | null
           nota_interna?: string | null
           nota_publica?: string | null
           ocurrido_en?: string
@@ -205,10 +262,33 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      es_admin: { Args: never; Returns: boolean }
-      es_staff: { Args: never; Returns: boolean }
-      generar_guia: { Args: never; Returns: string }
+      anular_evento: {
+        Args: { p_evento_id: string; p_motivo: string }
+        Returns: undefined
+      }
+      es_admin: { Args: Record<PropertyKey, never>; Returns: boolean }
+      es_staff: { Args: Record<PropertyKey, never>; Returns: boolean }
+      generar_guia: { Args: Record<PropertyKey, never>; Returns: string }
+      inactivar_envio: {
+        Args: { p_envio_id: string; p_motivo: string }
+        Returns: undefined
+      }
       rastrear_envio: { Args: { p_guia: string }; Returns: Json }
+      reactivar_envio: {
+        Args: { p_envio_id: string }
+        Returns: undefined
+      }
+      registrar_evento_masivo: {
+        Args: {
+          p_envio_ids: string[]
+          p_estado: Database["public"]["Enums"]["estado_envio"]
+          p_ubicacion: string
+          p_nota_publica: string
+          p_nota_interna: string
+          p_ocurrido_en: string
+        }
+        Returns: Json
+      }
     }
     Enums: {
       estado_envio:

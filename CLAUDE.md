@@ -83,6 +83,10 @@ Se maneja con migraciones SQL en `supabase/migrations/`.
 
 ## Seguridad (obligatorio)
 
+### Regla permanente: borrado lógico
+
+**Ningún dato se elimina físicamente de la base de datos.** Los registros se *inactivan* (envíos, perfiles) o se *anulan* (eventos). Esto garantiza trazabilidad y auditoría. La base de datos tiene dos barreras: (1) `REVOKE DELETE` en `envios`, `eventos_envio` y `perfiles` para los roles `anon` y `authenticated`; (2) un trigger `BEFORE DELETE` que lanza excepción si algún mecanismo lo intenta de todas formas. En el frontend, el botón "Eliminar" no existe: se usa "Inactivar" con motivo obligatorio y confirmación de guía.
+
 - **RLS activado en todas las tablas.**
 - El rol `anon` **no** tiene acceso directo a ninguna tabla.
 - La consulta pública se hace **solo** con la función RPC `rastrear_envio(p_guia text)`, definida como `SECURITY DEFINER` y con `search_path` fijo. Devuelve únicamente:

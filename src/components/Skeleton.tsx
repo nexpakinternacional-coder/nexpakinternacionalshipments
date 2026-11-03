@@ -5,6 +5,9 @@ export function Skeleton({ className = '' }: { className?: string }) {
 export function SkeletonFilaTabla() {
   return (
     <tr className="border-b border-border">
+      <td className="px-4 py-3.5 w-10">
+        <Skeleton className="h-4 w-4 rounded" />
+      </td>
       <td className="px-4 py-3.5">
         <Skeleton className="h-4 w-24" />
       </td>

@@ -124,3 +124,17 @@ export const ESTADOS_EXCEPCION: EstadoEnvio[] = [
   'intento_fallido',
   'devuelto',
 ]
+
+export const ESTADOS_FINALES: EstadoEnvio[] = ['entregado', 'devuelto']
+
+/** Devuelve el siguiente estado en el flujo normal, o null si ya está en el último. */
+export function siguienteEstadoSugerido(actual: EstadoEnvio): EstadoEnvio | null {
+  const idx = FLUJO_NORMAL.indexOf(actual)
+  if (idx === -1 || idx >= FLUJO_NORMAL.length - 1) return null
+  return FLUJO_NORMAL[idx + 1]
+}
+
+/** Devuelve el índice del estado en el flujo normal, o -1 si es excepción. */
+export function indiceFlujo(estado: EstadoEnvio): number {
+  return FLUJO_NORMAL.indexOf(estado)
+}
