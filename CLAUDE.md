@@ -166,7 +166,7 @@ Marca cada fase con [x] cuando esté terminada.
 
 - [ ] **Fase 0: Cuentas.** GitHub, Supabase (región East US) y Cloudflare. Instalar Node LTS y Git. (Manual, guiado desde el chat.)
 - [x] **Fase 1: Proyecto base.** Vite, React y TypeScript; Tailwind; React Router; estructura de carpetas; layouts vacíos; `.env.example`; Git inicializado.
-- [ ] **Fase 2: Base de datos.** Migraciones: enum, tablas, triggers, función de guía, `rastrear_envio`, RLS y broadcast.
+- [x] **Fase 2: Base de datos.** Migraciones: enum, tablas, triggers, función de guía, `rastrear_envio`, RLS y broadcast.
 - [ ] **Fase 3: Auth admin.** Login, rutas protegidas, AdminLayout y cierre de sesión.
 - [ ] **Fase 4: Envíos.** Crear envío (formulario validado), listado con búsqueda y filtros, y vista de detalle.
 - [ ] **Fase 5: Estados.** Cambiar estado (estado, ubicación, notas) y ver el historial en el detalle.
@@ -184,3 +184,5 @@ Marca cada fase con [x] cuando esté terminada.
 - El fallback de SPA para Cloudflare Pages se resuelve con `public/_redirects` (`/* /index.html 200`), que es el mecanismo estándar y vigente.
 - Vitest se usa para tests unitarios con importaciones explícitas (`import { describe, it, expect } from 'vitest'`), no con globals, para evitar configuración extra en tsconfig.
 - El `name` en `package.json` es `nexpak` porque la carpeta del proyecto tiene un espacio y no puede usarse como nombre de paquete npm.
+- La CLI de Supabase (v3) apunta por defecto al stack local (Docker). Para operar sobre la base remota se usa siempre `npx supabase db push --remote`. No usamos Docker ni base de datos local.
+- El diseño visual se desarrolla con la skill **ui-ux-pro-max** (`.claude/skills/ui-ux-pro-max/`) y el plugin **frontend-design**, ambos incluidos en el repositorio. Permiten definir paletas, tipografías, estilos de componentes y generar código de interfaz con criterio de diseño de producto.
