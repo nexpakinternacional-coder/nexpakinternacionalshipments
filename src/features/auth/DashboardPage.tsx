@@ -1,8 +1,12 @@
+import { t } from '../../textos/es'
+
 export default function DashboardPage() {
   return (
-    <main className="max-w-5xl mx-auto px-4 py-8">
-      <h1 className="text-2xl font-bold mb-4">Resumen</h1>
-      <p className="text-gray-500">Dashboard administrativo — próximamente</p>
-    </main>
+    <div className="p-6 lg:p-8">
+      <h1 className="text-xl font-semibold text-ink mb-1">{t.dashboard.titulo}</h1>
+      <p className="text-ink-muted text-sm">
+        El resumen de operaciones estará disponible próximamente.
+      </p>
+    </div>
   )
 }

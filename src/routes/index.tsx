@@ -1,6 +1,7 @@
 import { createBrowserRouter } from 'react-router-dom'
 import PublicLayout from '../layouts/PublicLayout'
 import AdminLayout from '../layouts/AdminLayout'
+import ProtectedRoute from '../features/auth/ProtectedRoute'
 import InicioPage from '../features/rastreo/InicioPage'
 import RastreoPage from '../features/rastreo/RastreoPage'
 import LoginPage from '../features/auth/LoginPage'
@@ -22,12 +23,17 @@ export const router = createBrowserRouter([
     element: <LoginPage />,
   },
   {
-    element: <AdminLayout />,
+    element: <ProtectedRoute />,
     children: [
-      { path: '/admin', element: <DashboardPage /> },
-      { path: '/admin/envios', element: <EnviosPage /> },
-      { path: '/admin/envios/nuevo', element: <NuevoEnvioPage /> },
-      { path: '/admin/envios/:id', element: <DetalleEnvioPage /> },
+      {
+        element: <AdminLayout />,
+        children: [
+          { path: '/admin', element: <DashboardPage /> },
+          { path: '/admin/envios', element: <EnviosPage /> },
+          { path: '/admin/envios/nuevo', element: <NuevoEnvioPage /> },
+          { path: '/admin/envios/:id', element: <DetalleEnvioPage /> },
+        ],
+      },
     ],
   },
 ])

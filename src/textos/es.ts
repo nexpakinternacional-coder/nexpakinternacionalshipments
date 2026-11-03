@@ -27,8 +27,18 @@ export const t = {
     contrasena: 'Contraseña',
     botonIngresar: 'Ingresar',
     cerrarSesion: 'Cerrar sesión',
-    errorCredenciales: 'Correo o contraseña incorrectos',
     cargando: 'Ingresando…',
+    errorCredenciales: 'Correo o contraseña incorrectos.',
+    errorDemasiadosIntentos: 'Demasiados intentos. Espera unos minutos e intenta de nuevo.',
+    errorSinConexion: 'Sin conexión. Verifica tu internet e intenta de nuevo.',
+    sinAcceso: 'Tu cuenta no tiene acceso al panel.',
+    sinAccesoDetalle: 'Comunícate con el administrador para activar tu cuenta.',
+  },
+
+  nav: {
+    resumen: 'Resumen',
+    envios: 'Envíos',
+    nuevoEnvio: 'Nuevo envío',
   },
 
   dashboard: {

@@ -174,6 +174,35 @@ Marca cada fase con [x] cuando esté terminada.
 - [ ] **Fase 7: Despliegue.** Cloudflare Pages, dominio, URLs de Auth, keep-alive y respaldo.
 - [ ] **Fase 8: Extras.** Rótulo imprimible en PDF con QR, notificaciones por correo, inglés y resumen en el dashboard.
 
+## Identidad visual
+
+### Paleta (tokens de Tailwind — definidos en `src/index.css` con `@theme`)
+
+| Token | Hex | WCAG AA sobre blanco | Uso |
+|---|---|---|---|
+| `navy` | `#0F2D5E` | 13.6:1 ✓ | Sidebar, logo, encabezados |
+| `accent` | `#E8500A` | 3.7:1 (solo íconos/elementos grandes) | Bordes activos, indicadores |
+| `accent-strong` | `#C2410C` | 5.1:1 ✓ | Botones con texto blanco, texto en naranja |
+| `canvas` | `#F4F6F9` | — | Fondo de páginas |
+| `surface` | `#FFFFFF` | — | Tarjetas, formularios |
+| `border` | `#D1D9E6` | — | Bordes de inputs, separadores |
+| `ink` | `#111827` | 18.1:1 ✓ | Texto principal |
+| `ink-muted` | `#6B7280` | 4.7:1 ✓ | Texto secundario (usar sobre `surface` blanco) |
+
+### Tipografía
+
+- **IBM Plex Sans** 400 y 600 para toda la interfaz (`@fontsource/ibm-plex-sans`).
+- **IBM Plex Mono** 400 para guías, IDs y datos numéricos en tablas (`@fontsource/ibm-plex-mono`).
+- Sin itálicas en la interfaz. Sin fuentes decorativas.
+
+### Estilo general
+
+- Flat con sombra sutil: `box-shadow: 0 1px 3px rgba(0,0,0,0.08)` en tarjetas.
+- Bordes `1px` con `border-border` en inputs y tarjetas.
+- Íconos: **Lucide React** (`strokeWidth={1.75}`, 18 px en nav, 16 px en contenido inline).
+- Los estados de envío siempre van con ícono + etiqueta de texto, nunca solo color.
+- Solo modo claro. Dark mode: Fase 8.
+
 ## Decisiones tomadas
 
 - Se eligió Vite en lugar de Next.js porque el plan gratuito de Vercel prohíbe el uso comercial. Cloudflare Pages lo permite y sirve sitios estáticos.

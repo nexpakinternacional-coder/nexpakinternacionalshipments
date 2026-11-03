@@ -36,3 +36,6 @@ dist-ssr
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# Instrucciones de fases (pueden contener datos de prueba)
+prompts/
