@@ -103,8 +103,20 @@ export default function AdminLayout() {
     setMenuAbierto(false)
   }, [location.pathname])
 
+  // Bloquear scroll del body mientras el menú móvil esté abierto
+  useEffect(() => {
+    if (menuAbierto) {
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = ''
+    }
+    return () => {
+      document.body.style.overflow = ''
+    }
+  }, [menuAbierto])
+
   return (
-    <div className="flex h-screen bg-canvas overflow-hidden">
+    <div className="flex h-dvh bg-canvas overflow-hidden">
       {/* Sidebar — escritorio */}
       <aside className="hidden lg:flex flex-col w-64 bg-navy flex-shrink-0">
         <div className="px-6 py-5 border-b border-white/10">

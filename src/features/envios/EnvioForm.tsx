@@ -307,24 +307,26 @@ export default function EnvioForm({
         </div>
       )}
 
-      {/* ── Acciones ──────────────────────────────────── */}
-      <div className="flex gap-3 pt-2">
-        <button
-          type="submit"
-          disabled={isSubmitting}
-          className="px-6 py-2.5 bg-accent-strong text-white font-semibold rounded-lg text-sm hover:bg-accent transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
-        >
-          {isSubmitting ? textoCargando : textoBoton}
-        </button>
-        {onCancelar && (
+      {/* ── Acciones (sticky) ─────────────────────────── */}
+      <div className="sticky bottom-0 -mx-6 lg:-mx-8 px-6 lg:px-8 py-4 bg-canvas border-t border-border">
+        <div className="flex gap-3">
           <button
-            type="button"
-            onClick={handleCancelar}
-            className="px-6 py-2.5 border border-border text-ink rounded-lg text-sm hover:bg-canvas transition-colors cursor-pointer"
+            type="submit"
+            disabled={isSubmitting}
+            className="px-6 py-2.5 bg-accent-strong text-white font-semibold rounded-lg text-sm hover:bg-accent transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
           >
-            {t.envios.formulario.botonCancelar}
+            {isSubmitting ? textoCargando : textoBoton}
           </button>
-        )}
+          {onCancelar && (
+            <button
+              type="button"
+              onClick={handleCancelar}
+              className="px-6 py-2.5 border border-border text-ink rounded-lg text-sm hover:bg-canvas transition-colors cursor-pointer"
+            >
+              {t.envios.formulario.botonCancelar}
+            </button>
+          )}
+        </div>
       </div>
     </form>
   )

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { ArrowLeft } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../auth/AuthContext'
@@ -10,6 +10,7 @@ import { t } from '../../textos/es'
 
 export default function NuevoEnvioPage() {
   const { session } = useAuth()
+  const navigate = useNavigate()
   const [exito, setExito] = useState<{ guia: string; id: string } | null>(null)
 
   async function handleGuardar(data: EnvioFormData) {
@@ -57,7 +58,11 @@ export default function NuevoEnvioPage() {
         </h1>
       </div>
 
-      <EnvioForm onGuardar={handleGuardar} storageKey="borrador-nuevo-envio" />
+      <EnvioForm
+        onGuardar={handleGuardar}
+        storageKey="borrador-nuevo-envio"
+        onCancelar={() => navigate('/admin/envios')}
+      />
     </div>
   )
 }
