@@ -142,6 +142,7 @@ Las rutas `/admin/*` están protegidas: sin sesión, redirigen al login.
 - No subir secretos: `.env.local` va en `.gitignore`.
 - Commits pequeños y descriptivos, en español.
 - El desarrollador usa Windows: los comandos de terminal deben funcionar en PowerShell.
+- Todo cambio visual en el layout del panel admin se verifica con `npm run verificar:layout` antes de entregarlo. El script prueba 5 viewports (1366×768, 1920×1080, 768×1024, 390×844, 440×956) y comprueba: sin doble scroll, solo `<main>` scrollea, barra de acciones visible.
 
 ## Comandos
 

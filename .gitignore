@@ -39,3 +39,10 @@ desktop.ini
 
 # Instrucciones de fases (pueden contener datos de prueba)
 prompts/
+
+# Capturas y resultados temporales de diagnóstico
+tmp/
+
+# Playwright
+playwright-report/
+test-results/

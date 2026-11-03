@@ -11,7 +11,20 @@ import EnviosPage from '../features/envios/EnviosPage'
 import NuevoEnvioPage from '../features/envios/NuevoEnvioPage'
 import DetalleEnvioPage from '../features/envios/DetalleEnvioPage'
 
+// Ruta de diagnóstico visual — solo en desarrollo, no llega al build de producción
+const rutasDev = import.meta.env.DEV
+  ? [
+      {
+        element: <AdminLayout />,
+        children: [
+          { path: '/dev/layout', element: <NuevoEnvioPage /> },
+        ],
+      },
+    ]
+  : []
+
 export const router = createBrowserRouter([
+  ...rutasDev,
   {
     element: <PublicLayout />,
     errorElement: <NotFoundPage />,

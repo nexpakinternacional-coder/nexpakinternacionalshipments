@@ -116,7 +116,7 @@ export default function AdminLayout() {
   }, [menuAbierto])
 
   return (
-    <div className="flex h-dvh bg-canvas overflow-hidden">
+    <div className="fixed inset-0 flex bg-canvas">
       {/* Sidebar — escritorio */}
       <aside className="hidden lg:flex flex-col w-64 bg-navy flex-shrink-0">
         <div className="px-6 py-5 border-b border-white/10">
