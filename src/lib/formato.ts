@@ -29,3 +29,12 @@ export function formatearDimensiones(
 ): string {
   return `${largo} × ${ancho} × ${alto} cm`
 }
+
+export function formatearSoloFecha(fecha: string): string {
+  const [y, m, d] = fecha.split('-').map(Number)
+  return new Date(y, m - 1, d).toLocaleDateString('es', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  })
+}

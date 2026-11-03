@@ -23,20 +23,20 @@ export interface InfoEstado {
 export const ESTADOS: Record<EstadoEnvio, InfoEstado> = {
   guia_generada: {
     etiqueta: 'Guía generada',
-    colorFondo: 'bg-gray-100',
-    colorTexto: 'text-gray-700',
+    colorFondo: 'bg-slate-100',
+    colorTexto: 'text-slate-700',
     icono: 'file-text',
     esExcepcion: false,
   },
   recibido_origen: {
-    etiqueta: 'Recibido en bodega de origen',
+    etiqueta: 'Recibido en origen',
     colorFondo: 'bg-blue-100',
     colorTexto: 'text-blue-700',
     icono: 'package',
     esExcepcion: false,
   },
   transito_internacional: {
-    etiqueta: 'En tránsito internacional',
+    etiqueta: 'En tránsito',
     colorFondo: 'bg-indigo-100',
     colorTexto: 'text-indigo-700',
     icono: 'plane',
@@ -45,7 +45,7 @@ export const ESTADOS: Record<EstadoEnvio, InfoEstado> = {
   en_aduana: {
     etiqueta: 'En aduana',
     colorFondo: 'bg-yellow-100',
-    colorTexto: 'text-yellow-700',
+    colorTexto: 'text-yellow-800',
     icono: 'shield',
     esExcepcion: false,
   },
@@ -57,7 +57,7 @@ export const ESTADOS: Record<EstadoEnvio, InfoEstado> = {
     esExcepcion: false,
   },
   centro_distribucion: {
-    etiqueta: 'En centro de distribución destino',
+    etiqueta: 'Centro de distribución',
     colorFondo: 'bg-purple-100',
     colorTexto: 'text-purple-700',
     icono: 'building',
@@ -92,16 +92,16 @@ export const ESTADOS: Record<EstadoEnvio, InfoEstado> = {
     esExcepcion: true,
   },
   intento_fallido: {
-    etiqueta: 'Intento fallido de entrega',
+    etiqueta: 'Intento fallido',
     colorFondo: 'bg-amber-100',
-    colorTexto: 'text-amber-700',
+    colorTexto: 'text-amber-800',
     icono: 'x-circle',
     esExcepcion: true,
   },
   devuelto: {
     etiqueta: 'Devuelto',
-    colorFondo: 'bg-gray-100',
-    colorTexto: 'text-gray-700',
+    colorFondo: 'bg-slate-100',
+    colorTexto: 'text-slate-700',
     icono: 'corner-down-left',
     esExcepcion: true,
   },
@@ -116,4 +116,11 @@ export const FLUJO_NORMAL: EstadoEnvio[] = [
   'centro_distribucion',
   'en_reparto',
   'entregado',
+]
+
+export const ESTADOS_EXCEPCION: EstadoEnvio[] = [
+  'novedad',
+  'retenido_aduana',
+  'intento_fallido',
+  'devuelto',
 ]

@@ -167,7 +167,7 @@ Marca cada fase con [x] cuando esté terminada.
 - [ ] **Fase 0: Cuentas.** GitHub, Supabase (región East US) y Cloudflare. Instalar Node LTS y Git. (Manual, guiado desde el chat.)
 - [x] **Fase 1: Proyecto base.** Vite, React y TypeScript; Tailwind; React Router; estructura de carpetas; layouts vacíos; `.env.example`; Git inicializado.
 - [x] **Fase 2: Base de datos.** Migraciones: enum, tablas, triggers, función de guía, `rastrear_envio`, RLS y broadcast.
-- [ ] **Fase 3: Auth admin.** Login, rutas protegidas, AdminLayout y cierre de sesión.
+- [x] **Fase 3: Auth admin.** Login, rutas protegidas, AdminLayout y cierre de sesión.
 - [ ] **Fase 4: Envíos.** Crear envío (formulario validado), listado con búsqueda y filtros, y vista de detalle.
 - [ ] **Fase 5: Estados.** Cambiar estado (estado, ubicación, notas) y ver el historial en el detalle.
 - [ ] **Fase 6: Vista pública.** Buscador, validación de la guía, línea de tiempo y actualización en vivo.
