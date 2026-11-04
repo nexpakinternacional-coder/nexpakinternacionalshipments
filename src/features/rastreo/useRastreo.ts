@@ -6,8 +6,11 @@ import { type EstadoEnvio } from '../../lib/estados'
 export interface EventoPublico {
   estado: EstadoEnvio
   ubicacion: string | null
+  ubicacion_etiqueta: string | null
   nota_publica: string | null
   ocurrido_en: string
+  lat: number | null
+  lng: number | null
 }
 
 export interface DatoRastreo {
@@ -16,9 +19,15 @@ export interface DatoRastreo {
   tipo_servicio: 'estandar' | 'express'
   fecha_estimada_entrega: string | null
   origen_ciudad: string
+  origen_estado: string | null
   origen_pais: string
+  origen_lat: number | null
+  origen_lng: number | null
   destino_ciudad: string
+  destino_estado: string | null
   destino_pais: string
+  destino_lat: number | null
+  destino_lng: number | null
   destinatario: string
   eventos: EventoPublico[]
 }
