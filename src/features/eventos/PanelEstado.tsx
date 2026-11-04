@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { X } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { type Tables } from '../../lib/supabase'
+import SelectorUbicacion, { type UbicacionSeleccionada } from '../../components/SelectorUbicacion'
 import {
   ESTADOS,
   ESTADOS_EXCEPCION,
@@ -23,6 +24,7 @@ type ConfirmType = 'final' | 'retroceso' | 'entregado'
 interface BorradorPanel {
   estadoSeleccionado: EstadoEnvio
   ubicacion: string
+  ubicacionMapa: UbicacionSeleccionada | null
   notaPublica: string
   notaInterna: string
   fechaHora: string
@@ -98,6 +100,17 @@ export default function PanelEstado({
     return storageKey ? (leerBorrador(storageKey)?.ubicacion ?? '') : ''
   })
 
+  const [ubicacionMapa, setUbicacionMapa] = useState<UbicacionSeleccionada | null>(() => {
+    if (esEdicion) {
+      const ev = eventoEditar!
+      if (ev.lat != null && ev.lng != null) {
+        return { lat: ev.lat, lng: ev.lng, etiqueta: ev.ubicacion_etiqueta ?? ev.ubicacion ?? '' }
+      }
+      return null
+    }
+    return storageKey ? (leerBorrador(storageKey)?.ubicacionMapa ?? null) : null
+  })
+
   const [notaPublica, setNotaPublica] = useState<string>(() => {
     if (esEdicion) return eventoEditar!.nota_publica ?? ''
     const borrador = storageKey ? leerBorrador(storageKey) : null
@@ -120,7 +133,6 @@ export default function PanelEstado({
     return storageKey ? (leerBorrador(storageKey)?.fechaHora ?? localISO()) : localISO()
   })
 
-  const [ubicacionesFrecuentes, setUbicacionesFrecuentes] = useState<string[]>([])
   const [confirmsQueue, setConfirmsQueue] = useState<ConfirmType[]>([])
   const [excluirFinales, setExcluirFinales] = useState(true)
   const [cargando, setCargando] = useState(false)
@@ -142,28 +154,9 @@ export default function PanelEstado({
   }, [estadoSeleccionado, esEdicion, modoMasivo])
 
   useEffect(() => {
-    async function cargar() {
-      const { data } = await supabase
-        .from('eventos_envio')
-        .select('ubicacion')
-        .not('ubicacion', 'is', null)
-        .limit(500)
-      if (!data) return
-      const freq = new Map<string, number>()
-      for (const row of data) {
-        if (row.ubicacion) freq.set(row.ubicacion, (freq.get(row.ubicacion) ?? 0) + 1)
-      }
-      setUbicacionesFrecuentes(
-        [...freq.entries()].sort((a, b) => b[1] - a[1]).slice(0, 20).map(e => e[0]),
-      )
-    }
-    cargar()
-  }, [])
-
-  useEffect(() => {
     if (!storageKey) return
-    guardarBorrador(storageKey, { estadoSeleccionado, ubicacion, notaPublica, notaInterna, fechaHora })
-  }, [storageKey, estadoSeleccionado, ubicacion, notaPublica, notaInterna, fechaHora])
+    guardarBorrador(storageKey, { estadoSeleccionado, ubicacion, ubicacionMapa, notaPublica, notaInterna, fechaHora })
+  }, [storageKey, estadoSeleccionado, ubicacion, ubicacionMapa, notaPublica, notaInterna, fechaHora])
 
   function buildQueue(): ConfirmType[] {
     if (esEdicion || modoMasivo || !estadoActual) return []
@@ -222,6 +215,9 @@ export default function PanelEstado({
           .from('eventos_envio')
           .update({
             ubicacion: ubicacion.trim() || null,
+            ubicacion_etiqueta: ubicacionMapa?.etiqueta?.trim() || null,
+            lat: ubicacionMapa?.lat ?? null,
+            lng: ubicacionMapa?.lng ?? null,
             nota_publica: notaPublica.trim() || null,
             nota_interna: notaInterna.trim() || null,
             ocurrido_en,
@@ -235,6 +231,9 @@ export default function PanelEstado({
           envio_id: envioId,
           estado: estadoSeleccionado,
           ubicacion: ubicacion.trim() || null,
+          ubicacion_etiqueta: ubicacionMapa?.etiqueta?.trim() || null,
+          lat: ubicacionMapa?.lat ?? null,
+          lng: ubicacionMapa?.lng ?? null,
           nota_publica: notaPublica.trim() || null,
           nota_interna: notaInterna.trim() || null,
           ocurrido_en,
@@ -418,25 +417,27 @@ export default function PanelEstado({
           <div>
             <label
               className="block text-xs font-semibold text-ink-muted uppercase tracking-wide mb-1.5"
-              htmlFor="panel-ubicacion"
+              htmlFor="panel-ubicacion-texto"
             >
-              {t.eventos.ubicacion}
+              {t.eventos.ubicacion} (texto)
             </label>
             <input
-              id="panel-ubicacion"
+              id="panel-ubicacion-texto"
               type="text"
               value={ubicacion}
               onChange={e => setUbicacion(e.target.value)}
               placeholder={t.eventos.ubicacionPlaceholder}
-              list="panel-ubicacion-list"
               className="w-full px-3 py-2.5 border border-border rounded-lg text-sm bg-surface focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent transition-colors"
             />
-            <datalist id="panel-ubicacion-list">
-              {ubicacionesFrecuentes.map(u => (
-                <option key={u} value={u} />
-              ))}
-            </datalist>
           </div>
+
+          <SelectorUbicacion
+            valor={ubicacionMapa}
+            onChange={(v) => {
+              setUbicacionMapa(v)
+              if (v && !ubicacion.trim()) setUbicacion(v.etiqueta)
+            }}
+          />
 
           <div>
             <label
