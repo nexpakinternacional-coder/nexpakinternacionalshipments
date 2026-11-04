@@ -189,3 +189,44 @@ for (const vp of VIEWPORTS) {
     ).toBe(true)
   })
 }
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Tests de páginas públicas — sin login, sin sticky bar
+// Solo verifica: sin scroll horizontal, sin desbordamiento visible
+// ──────────────────────────────────────────────────────────────────────────────
+const VIEWPORTS_MOVIL = [
+  { nombre: '390x844',   ancho: 390,  alto: 844  },
+  { nombre: '768x1024',  ancho: 768,  alto: 1024 },
+  { nombre: '1366x768',  ancho: 1366, alto: 768  },
+]
+
+const PAGINAS_PUBLICAS = [
+  { ruta: '/',                  nombre: 'Inicio' },
+  { ruta: '/rastreo/NXPAAAAAAA', nombre: 'Rastreo (no encontrado)' },
+]
+
+for (const vp of VIEWPORTS_MOVIL) {
+  for (const pagina of PAGINAS_PUBLICAS) {
+    test(`Público ${pagina.nombre} @ ${vp.nombre}`, async ({ page }) => {
+      await page.setViewportSize({ width: vp.ancho, height: vp.alto })
+      await page.goto(pagina.ruta)
+      await page.waitForLoadState('networkidle')
+
+      await page.screenshot({
+        path: path.join(SCREENSHOTS_DIR, `publico-${pagina.nombre.replace(/\s+/g, '-').toLowerCase()}-${vp.nombre}.png`),
+        fullPage: false,
+      })
+
+      const { scrollWidth, clientWidth, tieneScrollHorizontal } = await page.evaluate(() => ({
+        scrollWidth: document.documentElement.scrollWidth,
+        clientWidth: document.documentElement.clientWidth,
+        tieneScrollHorizontal: document.documentElement.scrollWidth > document.documentElement.clientWidth + 2,
+      }))
+
+      expect(
+        tieneScrollHorizontal,
+        `${pagina.nombre} @ ${vp.nombre}: no debe haber scroll horizontal (scrollW=${scrollWidth}, clientW=${clientWidth})`
+      ).toBe(false)
+    })
+  }
+}

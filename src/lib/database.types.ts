@@ -1,5 +1,3 @@
-Warning: --linked is deprecated and will be removed in v4. Use --remote instead
-Target: project nexpak (axqhjdfwoinnjlvtbapg) · production
 export type Json =
   | string
   | number
