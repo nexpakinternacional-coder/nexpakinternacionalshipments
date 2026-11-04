@@ -18,6 +18,7 @@ import {
 } from '../../lib/estados'
 import { t } from '../../textos/es'
 import { useRastreo, type DatoRastreo } from './useRastreo'
+import MapaEnvio, { type DatosMapa } from '../../components/MapaEnvio'
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -29,6 +30,24 @@ function tiempoRelativo(fecha: Date): string {
   if (minutos < 60) return `hace ${minutos} min`
   const horas = Math.floor(minutos / 60)
   return horas === 1 ? 'hace 1 hora' : `hace ${horas} horas`
+}
+
+function datosMapa(d: DatoRastreo): DatosMapa {
+  return {
+    origen: d.origen_lat != null && d.origen_lng != null
+      ? { lat: d.origen_lat, lng: d.origen_lng, etiqueta: d.origen_ciudad }
+      : undefined,
+    destino: d.destino_lat != null && d.destino_lng != null
+      ? { lat: d.destino_lat, lng: d.destino_lng, etiqueta: d.destino_ciudad }
+      : undefined,
+    eventos: d.eventos
+      .filter(ev => ev.lat != null && ev.lng != null)
+      .map(ev => ({
+        lat: ev.lat!,
+        lng: ev.lng!,
+        etiqueta: ev.ubicacion_etiqueta ?? ev.ubicacion ?? undefined,
+      })),
+  }
 }
 
 // ── Skeletons ────────────────────────────────────────────────────────────────
@@ -512,6 +531,7 @@ export default function RastreoPage() {
               animando={animando}
             />
             <BarraProgreso estado={datos.estado_actual} />
+            <MapaEnvio datos={datosMapa(datos)} className="mb-4" />
             {ESTADOS_EXCEPCION.includes(datos.estado_actual) && <BannerExcepcion />}
             <InfoRuta datos={datos} />
             <Historial eventos={datos.eventos} />
