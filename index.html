@@ -2,18 +2,24 @@
 <html lang="es">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="icon" href="/favicon.ico" sizes="48x48" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/manifest.webmanifest" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#0F2D5E" />
     <title>Rastreo de envíos · Nexpak</title>
     <meta name="description" content="Rastrea tu envío con Nexpak. Ingresa tu número de guía para ver el estado en tiempo real." />
-    <!-- Open Graph -->
+    <!-- Open Graph — En producción VITE_PUBLIC_URL debe ser una URL absoluta para que WhatsApp y otras apps muestren la imagen correctamente -->
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="Nexpak" />
     <meta property="og:title" content="Nexpak · Rastreo de envíos internacionales" />
     <meta property="og:description" content="Rastrea tu envío con Nexpak. Ingresa tu número de guía para ver el estado en tiempo real." />
-    <meta name="twitter:card" content="summary" />
+    <meta property="og:image" content="%VITE_PUBLIC_URL%/og-image.png" />
+    <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="Nexpak · Rastreo de envíos" />
     <meta name="twitter:description" content="Rastrea tu envío con Nexpak. Ingresa tu número de guía para ver el estado en tiempo real." />
+    <meta name="twitter:image" content="%VITE_PUBLIC_URL%/og-image.png" />
   </head>
   <body>
     <div id="root"></div>
