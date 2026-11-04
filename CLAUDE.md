@@ -7,7 +7,7 @@ Nexpak es una agencia de envíos internacionales nueva. Este software tiene dos 
 1. **Vista pública (clientes finales):** el usuario ingresa su número de guía y ve el estado de su envío y su historial. Cuando un administrador cambia el estado, la página se actualiza sola, sin recargar.
 2. **Dashboard administrativo:** los administradores registran envíos (remitente, destinatario y paquete), el sistema genera la guía automáticamente, y ellos actualizan el estado del envío a medida que avanza.
 
-"Tiempo real" significa que el cambio de estado hecho por un admin se refleja al instante en la vista pública. **No** hay GPS ni seguimiento de vehículos.
+"Tiempo real" significa que el cambio de estado hecho por un admin se refleja al instante en la vista pública. **No hay rastreo satelital** de vehículos; sin embargo, cada evento lleva un punto en el mapa que el administrador ubica manualmente (una bodega, una aduana, un centro de distribución). El cliente ve el recorrido de su paquete trazado punto a punto.
 
 - Desarrollador: trabaja en Windows. La ruta local es `C:\Users\CAMI\Desktop\Proyecto Envios`.
 - Es la primera vez que el desarrollador usa Supabase y Cloudflare. Cuando un paso requiera acción manual en esos paneles, explícalo paso a paso y en español.
@@ -19,6 +19,7 @@ Nexpak es una agencia de envíos internacionales nueva. Este software tiene dos 
 | Capa | Tecnología |
 |---|---|
 | Frontend | React + Vite + TypeScript |
+| Mapas | MapLibre GL JS + OpenFreeMap (sin clave de API) |
 | Estilos | Tailwind CSS |
 | Rutas | React Router |
 | Backend | Supabase: Postgres, Auth, Realtime y funciones RPC |
@@ -183,6 +184,7 @@ Marca cada fase con [x] cuando esté terminada.
 - [x] **Fase 5: Estados.** Cambiar estado (estado, ubicación, notas) y ver el historial en el detalle.
 - [x] **Fase 6: Vista pública.** Buscador, validación de la guía, línea de tiempo y actualización en vivo. Incluye auditoría de autores, pulido visual (fase 6b), script db:tipos y verificar:rutas.
 - [x] **Fase D1: Logo e identidad de marca.** Componente `<Logo />`, archivos en `src/assets/marca/`, favicons reales, `manifest.webmanifest`, Open Graph con `og-image.png`, hoja de marca en `/dev/marca` (solo DEV), y sección Marca en CLAUDE.md.
+- [ ] **Fase R1: Mapa interactivo y ubicaciones.** Coordenadas en `envios` y `eventos_envio`; tabla `ubicaciones`; componente `MapaEnvio` (MapLibre GL JS + OpenFreeMap); `SelectorUbicacion` para el admin (chips de frecuentes, Nominatim, pin arrastrable); mapa en rastreo público con actualización en vivo.
 - [ ] **Fase 7: Despliegue.** Cloudflare Pages, dominio, URLs de Auth, keep-alive y respaldo.
 - [ ] **Fase 8: Extras.** Rótulo imprimible en PDF con QR, notificaciones por correo, inglés y resumen en el dashboard.
 
@@ -253,4 +255,5 @@ Viewboxes: isotipo `0 0 80 68`, logo horizontal `0 0 365.88 68`. El componente `
 - Vitest se usa para tests unitarios con importaciones explícitas (`import { describe, it, expect } from 'vitest'`), no con globals, para evitar configuración extra en tsconfig.
 - El `name` en `package.json` es `nexpak` porque la carpeta del proyecto tiene un espacio y no puede usarse como nombre de paquete npm.
 - La CLI de Supabase (v3) apunta por defecto al stack local (Docker). Para operar sobre la base remota se usa siempre `npx supabase db push --remote`. No usamos Docker ni base de datos local.
+- Los mapas usan **MapLibre GL JS** con estilo de **OpenFreeMap** (`tiles.openfreemap.org/styles/liberty`). Sin clave de API. Búsqueda de lugares con **Nominatim** (`nominatim.openstreetmap.org/search`). Ambos dominios deben estar en la CSP (Fase H). Atribución obligatoria: "© OpenFreeMap · © OpenStreetMap contributors".
 - El diseño visual se desarrolla con la skill **ui-ux-pro-max** (`.claude/skills/ui-ux-pro-max/`) y el plugin **frontend-design**, ambos incluidos en el repositorio. Permiten definir paletas, tipografías, estilos de componentes y generar código de interfaz con criterio de diseño de producto.
