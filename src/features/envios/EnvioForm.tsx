@@ -3,7 +3,9 @@ import { type Resolver, useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { envioSchema, type EnvioFormData } from './schema'
 import SelectorPais from './SelectorPais'
+import SelectorUbicacion from '../../components/SelectorUbicacion'
 import { t } from '../../textos/es'
+import { MapPin } from 'lucide-react'
 
 interface EnvioFormProps {
   defaultValues?: Partial<EnvioFormData>
@@ -94,6 +96,47 @@ function Field({
         <p className="mt-1 text-xs text-red-600" role="alert">
           {error}
         </p>
+      )}
+    </div>
+  )
+}
+
+// Selector de mapa colapsable para origen/destino del envío
+function MapaOpcional({
+  label,
+  valor,
+  onChange,
+}: {
+  label: string
+  valor: { lat: number; lng: number; etiqueta: string } | null | undefined
+  onChange: (v: { lat: number; lng: number; etiqueta: string } | null) => void
+}) {
+  const [abierto, setAbierto] = useState(!!valor)
+
+  return (
+    <div className="border border-border rounded-lg overflow-hidden">
+      <button
+        type="button"
+        onClick={() => setAbierto(a => !a)}
+        className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-navy font-medium hover:bg-canvas transition-colors cursor-pointer"
+      >
+        <MapPin size={15} strokeWidth={1.75} className="flex-shrink-0" />
+        {label}
+        {valor && (
+          <span className="ml-auto text-xs text-ink-muted font-normal truncate max-w-[180px]">
+            {valor.etiqueta}
+          </span>
+        )}
+        <span className="ml-auto text-ink-muted text-xs">{abierto ? '▲' : '▼'}</span>
+      </button>
+      {abierto && (
+        <div className="p-3 border-t border-border bg-canvas">
+          <SelectorUbicacion
+            valor={valor ?? null}
+            onChange={onChange}
+            label={label}
+          />
+        </div>
       )}
     </div>
   )
@@ -256,6 +299,24 @@ export default function EnvioForm({
           <input id="remitente_ciudad" {...register('remitente_ciudad')} className={inputCls(errors.remitente_ciudad?.message)} />
         </Field>
 
+        <Field id="remitente_estado" label={f.estado} error={errors.remitente_estado?.message}>
+          <input id="remitente_estado" {...register('remitente_estado')} placeholder={f.estadoPlaceholder} className={inputCls(errors.remitente_estado?.message)} />
+        </Field>
+
+        <div className="md:col-span-2">
+          <Controller
+            name="origen_coords"
+            control={control}
+            render={({ field }) => (
+              <MapaOpcional
+                label="Ubicar origen en el mapa"
+                valor={field.value ?? null}
+                onChange={field.onChange}
+              />
+            )}
+          />
+        </div>
+
         <Field id="remitente_telefono" label={f.telefono} error={errors.remitente_telefono?.message}>
           <input id="remitente_telefono" type="tel" {...register('remitente_telefono')} placeholder="+57 300 000 0000" className={inputCls(errors.remitente_telefono?.message)} />
         </Field>
@@ -282,6 +343,24 @@ export default function EnvioForm({
         <Field id="destinatario_ciudad" label={f.ciudad} error={errors.destinatario_ciudad?.message} required>
           <input id="destinatario_ciudad" {...register('destinatario_ciudad')} className={inputCls(errors.destinatario_ciudad?.message)} />
         </Field>
+
+        <Field id="destinatario_estado" label={f.estado} error={errors.destinatario_estado?.message}>
+          <input id="destinatario_estado" {...register('destinatario_estado')} placeholder={f.estadoPlaceholder} className={inputCls(errors.destinatario_estado?.message)} />
+        </Field>
+
+        <div className="md:col-span-2">
+          <Controller
+            name="destino_coords"
+            control={control}
+            render={({ field }) => (
+              <MapaOpcional
+                label="Ubicar destino en el mapa"
+                valor={field.value ?? null}
+                onChange={field.onChange}
+              />
+            )}
+          />
+        </div>
 
         <Field id="destinatario_telefono" label={f.telefono} error={errors.destinatario_telefono?.message} required>
           <input id="destinatario_telefono" type="tel" {...register('destinatario_telefono')} placeholder="+57 300 000 0000" className={inputCls(errors.destinatario_telefono?.message)} />

@@ -207,6 +207,8 @@ export const t = {
       direccion: 'Dirección',
       pais: 'País',
       ciudad: 'Ciudad',
+      estado: 'Estado / Provincia',
+      estadoPlaceholder: 'Ej. Texas, Ontario, Jalisco',
       documento: 'Documento de identidad',
       descripcion: 'Descripción del contenido',
       peso: 'Peso (kg)',

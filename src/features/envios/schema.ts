@@ -18,6 +18,12 @@ const numPositivo = z.preprocess(
   z.number().positive('Debe ser mayor que 0'),
 )
 
+const latLng = z.object({
+  lat: z.number(),
+  lng: z.number(),
+  etiqueta: z.string(),
+}).nullable().optional()
+
 export const envioSchema = z.object({
   remitente_nombre: z.string().min(1, 'Este campo es requerido'),
   remitente_telefono: z
@@ -29,6 +35,8 @@ export const envioSchema = z.object({
   remitente_direccion: z.string().optional().or(z.literal('')),
   remitente_pais: z.string().min(1, 'Este campo es requerido'),
   remitente_ciudad: z.string().min(1, 'Este campo es requerido'),
+  remitente_estado: z.string().optional().or(z.literal('')),
+  origen_coords: latLng,
 
   destinatario_nombre: z.string().min(1, 'Este campo es requerido'),
   destinatario_telefono: z
@@ -40,6 +48,8 @@ export const envioSchema = z.object({
   destinatario_direccion: z.string().min(1, 'Este campo es requerido'),
   destinatario_pais: z.string().min(1, 'Este campo es requerido'),
   destinatario_ciudad: z.string().min(1, 'Este campo es requerido'),
+  destinatario_estado: z.string().optional().or(z.literal('')),
+  destino_coords: latLng,
 
   descripcion_contenido: z.string().min(1, 'Este campo es requerido'),
   peso_kg: numPositivo,

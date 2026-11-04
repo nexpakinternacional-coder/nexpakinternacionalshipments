@@ -4,12 +4,12 @@ export interface Pais {
 }
 
 export const PAISES_FRECUENTES: Pais[] = [
-  { codigo: 'CO', nombre: 'Colombia' },
   { codigo: 'US', nombre: 'Estados Unidos' },
-  { codigo: 'CN', nombre: 'China' },
+  { codigo: 'CA', nombre: 'Canadá' },
   { codigo: 'MX', nombre: 'México' },
   { codigo: 'ES', nombre: 'España' },
-  { codigo: 'PA', nombre: 'Panamá' },
+  { codigo: 'CO', nombre: 'Colombia' },
+  { codigo: 'CN', nombre: 'China' },
 ]
 
 export const TODOS_LOS_PAISES: Pais[] = [

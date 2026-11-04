@@ -308,16 +308,23 @@ export default function DetalleEnvioPage() {
   // ── Editar envío ────────────────────────────────────────────────────────────
   async function handleActualizar(data: EnvioFormData) {
     if (!id) return
+    const { origen_coords, destino_coords, remitente_estado, destinatario_estado, ...resto } = data
     const { error } = await supabase
       .from('envios')
       .update({
-        ...data,
+        ...resto,
         remitente_telefono: data.remitente_telefono || null,
         remitente_email: data.remitente_email || null,
         remitente_direccion: data.remitente_direccion || null,
+        remitente_estado: remitente_estado || null,
         destinatario_email: data.destinatario_email || null,
         destinatario_documento: data.destinatario_documento || null,
+        destinatario_estado: destinatario_estado || null,
         fecha_estimada_entrega: data.fecha_estimada_entrega || null,
+        origen_lat: origen_coords?.lat ?? null,
+        origen_lng: origen_coords?.lng ?? null,
+        destino_lat: destino_coords?.lat ?? null,
+        destino_lng: destino_coords?.lng ?? null,
       })
       .eq('id', id)
     if (error) throw new Error(error.message)
