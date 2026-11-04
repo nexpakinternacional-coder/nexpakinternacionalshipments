@@ -184,7 +184,7 @@ Marca cada fase con [x] cuando esté terminada.
 - [x] **Fase 5: Estados.** Cambiar estado (estado, ubicación, notas) y ver el historial en el detalle.
 - [x] **Fase 6: Vista pública.** Buscador, validación de la guía, línea de tiempo y actualización en vivo. Incluye auditoría de autores, pulido visual (fase 6b), script db:tipos y verificar:rutas.
 - [x] **Fase D1: Logo e identidad de marca.** Componente `<Logo />`, archivos en `src/assets/marca/`, favicons reales, `manifest.webmanifest`, Open Graph con `og-image.png`, hoja de marca en `/dev/marca` (solo DEV), y sección Marca en CLAUDE.md.
-- [ ] **Fase R1: Mapa interactivo y ubicaciones.** Coordenadas en `envios` y `eventos_envio`; tabla `ubicaciones`; componente `MapaEnvio` (MapLibre GL JS + OpenFreeMap); `SelectorUbicacion` para el admin (chips de frecuentes, Nominatim, pin arrastrable); mapa en rastreo público con actualización en vivo.
+- [x] **Fase R1: Mapa interactivo y ubicaciones.** Coordenadas en `envios` y `eventos_envio`; tabla `ubicaciones`; componente `MapaEnvio` (MapLibre GL JS + OpenFreeMap); `SelectorUbicacion` para el admin (chips de frecuentes, Nominatim, pin arrastrable); mapa en rastreo público con actualización en vivo.
 - [ ] **Fase 7: Despliegue.** Cloudflare Pages, dominio, URLs de Auth, keep-alive y respaldo.
 - [ ] **Fase 8: Extras.** Rótulo imprimible en PDF con QR, notificaciones por correo, inglés y resumen en el dashboard.
 
