@@ -137,10 +137,18 @@ function BarraProgreso({ estado }: { estado: EstadoEnvio }) {
         })}
       </div>
 
-      {/* Etiquetas en desktop — solo inicio y fin */}
-      <div className="hidden sm:flex justify-between mt-2 text-[10px] text-ink-muted">
-        <span>{ESTADOS[FLUJO_NORMAL[0]].etiqueta}</span>
-        <span>{ESTADOS[FLUJO_NORMAL[FLUJO_NORMAL.length - 1]].etiqueta}</span>
+      {/* Desktop: inicio · paso actual · fin */}
+      <div className="hidden sm:flex justify-between items-baseline mt-2.5">
+        <span className="text-[10px] text-ink-muted">{ESTADOS[FLUJO_NORMAL[0]].etiqueta}</span>
+        <span className="text-xs font-semibold text-navy">
+          {ESTADOS[estado].etiqueta}
+          {!esExcepcion && (
+            <span className="font-normal text-ink-muted">
+              {' · '}Paso {idxActual + 1} de {FLUJO_NORMAL.length}
+            </span>
+          )}
+        </span>
+        <span className="text-[10px] text-ink-muted">{ESTADOS[FLUJO_NORMAL[FLUJO_NORMAL.length - 1]].etiqueta}</span>
       </div>
     </div>
   )
@@ -337,35 +345,29 @@ function GuiaHeader({ guia }: { guia: string }) {
 
   return (
     <div className="flex items-center justify-between gap-3 mb-4">
-      <div className="flex items-center gap-2">
-        <span className="font-mono text-xl font-semibold text-navy tracking-widest">
-          {formatearGuia(guia)}
-        </span>
-      </div>
-      <div className="flex items-center gap-2 flex-shrink-0">
+      <span className="font-mono text-xl font-semibold text-navy tracking-widest whitespace-nowrap">
+        {formatearGuia(guia)}
+      </span>
+      <div className="flex items-center gap-1.5 flex-shrink-0">
         <button
           onClick={copiarGuia}
-          className="flex items-center gap-1.5 px-3 py-1.5 border border-border rounded-lg text-xs text-ink hover:bg-canvas transition-colors cursor-pointer"
+          aria-label={t.rastreo.copiarGuia}
+          className="flex items-center gap-1.5 px-2 sm:px-3 py-1.5 border border-border rounded-lg text-xs text-ink hover:bg-canvas transition-colors cursor-pointer"
         >
           {copiado ? (
-            <>
-              <CheckCircle size={13} className="text-green-500" />
-              {t.rastreo.guiaCopiada}
-            </>
+            <CheckCircle size={13} className="text-green-500" />
           ) : (
-            <>
-              <Copy size={13} />
-              {t.rastreo.copiarGuia}
-            </>
+            <Copy size={13} />
           )}
+          <span className="hidden sm:inline">{copiado ? t.rastreo.guiaCopiada : t.rastreo.copiarGuia}</span>
         </button>
         <button
           onClick={compartir}
-          className="flex items-center gap-1.5 px-3 py-1.5 border border-border rounded-lg text-xs text-ink hover:bg-canvas transition-colors cursor-pointer"
           aria-label={t.rastreo.compartir}
+          className="flex items-center gap-1.5 px-2 sm:px-3 py-1.5 border border-border rounded-lg text-xs text-ink hover:bg-canvas transition-colors cursor-pointer"
         >
           <Share2 size={13} />
-          {enlaceCopiado ? t.rastreo.enlaceCopiado : t.rastreo.compartir}
+          <span className="hidden sm:inline">{enlaceCopiado ? t.rastreo.enlaceCopiado : t.rastreo.compartir}</span>
         </button>
       </div>
     </div>

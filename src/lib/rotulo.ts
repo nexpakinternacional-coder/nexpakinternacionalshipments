@@ -1,6 +1,6 @@
 import type { Database } from './database.types'
 import { formatearGuia } from './guia'
-import { formatearFecha } from './formato'
+import { formatearFecha, formatearPeso, formatearDimensiones } from './formato'
 
 type Envio = Database['public']['Tables']['envios']['Row']
 
@@ -44,26 +44,35 @@ async function dibujarRotulo(
   QRCode: QRCodeType,
 ): Promise<void> {
   const pad = 14
+  const BLACK = '#000000'
+  const GRAY  = '#444444'
   const guiaFormateada = formatearGuia(envio.guia)
   const servicio = envio.tipo_servicio === 'express' ? 'EXPRESS' : 'ESTÁNDAR'
-  const colorNavy = '#0F2D5E'
+
+  doc.setDrawColor(BLACK)
+  doc.setLineWidth(0.5)
 
   // ── Encabezado ──────────────────────────────────────────────────────────────
-  doc.setFillColor(colorNavy)
-  doc.rect(0, 0, W_PT, 44, 'F')
   doc.setFont('helvetica', 'bold')
-  doc.setFontSize(18)
-  doc.setTextColor('#FFFFFF')
-  doc.text('NEXPAK', pad, 29)
-  doc.setFontSize(9)
+  doc.setFontSize(20)
+  doc.setTextColor(BLACK)
+  doc.text('NEXPAK', pad, 28)
+
   doc.setFont('helvetica', 'normal')
-  doc.text(servicio, W_PT - pad, 29, { align: 'right' })
+  doc.setFontSize(9)
+  doc.setTextColor(GRAY)
+  doc.text(servicio, W_PT - pad, 28, { align: 'right' })
+
+  // Línea separadora encabezado
+  doc.setLineWidth(1)
+  doc.line(pad, 36, W_PT - pad, 36)
+  doc.setLineWidth(0.5)
 
   // ── Número de guía ──────────────────────────────────────────────────────────
   doc.setFont('courier', 'bold')
   doc.setFontSize(16)
-  doc.setTextColor(colorNavy)
-  doc.text(guiaFormateada, W_PT / 2, 68, { align: 'center' })
+  doc.setTextColor(BLACK)
+  doc.text(guiaFormateada, W_PT / 2, 58, { align: 'center' })
 
   // ── Código de barras Code128 ────────────────────────────────────────────────
   const canvas = document.createElement('canvas')
@@ -73,27 +82,27 @@ async function dibujarRotulo(
     height: 50,
     displayValue: false,
     margin: 0,
+    background: '#FFFFFF',
+    lineColor: '#000000',
   })
   const bW = W_PT - pad * 2
-  doc.addImage(canvas.toDataURL('image/png'), 'PNG', pad, 78, bW, 52)
+  doc.addImage(canvas.toDataURL('image/png'), 'PNG', pad, 66, bW, 50)
 
   // ── Separador ───────────────────────────────────────────────────────────────
-  let y = 142
-  doc.setDrawColor('#D1D9E6')
-  doc.setLineWidth(0.5)
+  let y = 126
   doc.line(pad, y, W_PT - pad, y)
   y += 10
 
   // ── Remitente ───────────────────────────────────────────────────────────────
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(7)
-  doc.setTextColor('#6B7280')
+  doc.setTextColor(GRAY)
   doc.text('REMITENTE', pad, y)
   y += 10
 
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(9)
-  doc.setTextColor('#111827')
+  doc.setTextColor(BLACK)
   doc.text(envio.remitente_nombre, pad, y)
   y += 11
 
@@ -112,26 +121,25 @@ async function dibujarRotulo(
   }
 
   // ── Separador ───────────────────────────────────────────────────────────────
-  y += 3
+  y += 2
   doc.line(pad, y, W_PT - pad, y)
   y += 10
 
   // ── Destinatario ────────────────────────────────────────────────────────────
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(7)
-  doc.setTextColor('#6B7280')
+  doc.setTextColor(GRAY)
   doc.text('DESTINATARIO', pad, y)
   y += 10
 
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(10)
-  doc.setTextColor(colorNavy)
+  doc.setTextColor(BLACK)
   doc.text(envio.destinatario_nombre, pad, y)
   y += 12
 
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(8)
-  doc.setTextColor('#111827')
   if (envio.destinatario_direccion) {
     const ls = doc.splitTextToSize(envio.destinatario_direccion, W_PT - pad * 2 - 80)
     doc.text(ls, pad, y)
@@ -145,20 +153,20 @@ async function dibujarRotulo(
   }
 
   // ── Separador ───────────────────────────────────────────────────────────────
-  y += 3
+  y += 2
   doc.line(pad, y, W_PT - pad, y)
   y += 10
 
   // ── Detalles del paquete ────────────────────────────────────────────────────
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(7)
-  doc.setTextColor('#6B7280')
+  doc.setTextColor(GRAY)
   doc.text('DETALLE DEL PAQUETE', pad, y)
   y += 10
 
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(8)
-  doc.setTextColor('#111827')
+  doc.setTextColor(BLACK)
 
   if (envio.descripcion_contenido) {
     const ls = doc.splitTextToSize(envio.descripcion_contenido, W_PT - pad * 2 - 80)
@@ -167,9 +175,9 @@ async function dibujarRotulo(
   }
 
   const detalles: string[] = []
-  if (envio.peso_kg != null) detalles.push(`Peso: ${envio.peso_kg} kg`)
+  if (envio.peso_kg != null) detalles.push(`Peso: ${formatearPeso(Number(envio.peso_kg))}`)
   if (envio.largo_cm && envio.ancho_cm && envio.alto_cm)
-    detalles.push(`${envio.largo_cm}×${envio.ancho_cm}×${envio.alto_cm} cm`)
+    detalles.push(`Dims: ${formatearDimensiones(Number(envio.largo_cm), Number(envio.ancho_cm), Number(envio.alto_cm))}`)
   if (detalles.length > 0) {
     doc.text(detalles.join('   '), pad, y)
     y += 10
@@ -178,35 +186,40 @@ async function dibujarRotulo(
   doc.text(`Creado: ${formatearFecha(envio.created_at)}`, pad, y)
   if (envio.fecha_estimada_entrega) {
     doc.text(
-      `Est. entrega: ${formatearFecha(envio.fecha_estimada_entrega)}`,
+      `Entrega est.: ${formatearFecha(envio.fecha_estimada_entrega)}`,
       W_PT - pad,
       y,
       { align: 'right' },
     )
   }
 
-  // ── QR code (async, awaited before save) ───────────────────────────────────
+  // ── QR code ─────────────────────────────────────────────────────────────────
   const urlRastreo = `${URL_BASE}/rastreo/${envio.guia}`
-  const qrSize = 70
+  const qrSize = 68
   const qrX = W_PT - pad - qrSize
-  const qrY = H_PT - 20 - pad - qrSize - 12
+  const qrY = H_PT - 24 - pad - qrSize - 12
 
   const qrImg = await QRCode.toDataURL(urlRastreo, {
     width: 128,
     margin: 1,
-    color: { dark: '#0F2D5E', light: '#FFFFFF' },
+    color: { dark: '#000000', light: '#FFFFFF' },
   })
   doc.addImage(qrImg, 'PNG', qrX, qrY, qrSize, qrSize)
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(6.5)
-  doc.setTextColor('#6B7280')
+  doc.setTextColor(GRAY)
   doc.text('Escanea para rastrear', qrX + qrSize / 2, qrY + qrSize + 9, { align: 'center' })
 
-  // ── Pie ────────────────────────────────────────────────────────────────────
-  doc.setFillColor(colorNavy)
-  doc.rect(0, H_PT - 20, W_PT, 20, 'F')
+  // ── Pie ─────────────────────────────────────────────────────────────────────
+  const urlMostrar = urlRastreo.replace(/^https?:\/\//, '')
+  doc.setLineWidth(1)
+  doc.line(pad, H_PT - 24, W_PT - pad, H_PT - 24)
+  doc.setLineWidth(0.5)
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(7)
-  doc.setTextColor('#FFFFFF')
-  doc.text(urlRastreo, W_PT / 2, H_PT - 7, { align: 'center' })
+  doc.setTextColor(BLACK)
+
+  const urlLines = doc.splitTextToSize(urlMostrar, W_PT - qrSize - pad * 3)
+  const urlY = H_PT - 24 + 10
+  doc.text(urlLines, pad, urlY)
 }

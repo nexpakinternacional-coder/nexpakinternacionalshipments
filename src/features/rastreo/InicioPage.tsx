@@ -83,8 +83,10 @@ export default function InicioPage() {
           </p>
 
           <form onSubmit={handleBuscar} noValidate>
-            <div className="flex flex-col sm:flex-row gap-3 justify-center items-stretch">
-              <div className="relative flex-1 max-w-sm mx-auto sm:mx-0">
+            {/* En móvil: columna con ancho máximo compartido (mismo ancho input y botón).
+                En sm+: fila flexible. */}
+            <div className="flex flex-col sm:flex-row gap-3 justify-center items-stretch max-w-sm mx-auto sm:max-w-none">
+              <div className="relative sm:flex-1">
                 <input
                   ref={inputRef}
                   type="text"

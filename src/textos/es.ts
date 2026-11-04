@@ -96,7 +96,7 @@ export const t = {
     transitoInternacional: 'En tránsito',
     enAduana: 'En aduana',
     conNovedad: 'Con novedad',
-    entregados30d: 'Entregados (30d)',
+    entregados30d: 'Entregados · 30 días',
     creadosHoy: 'Creados hoy',
     distribucionEstados: 'Distribución por estado',
     requierenAtencion: 'Requieren atención',

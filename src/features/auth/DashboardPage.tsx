@@ -106,7 +106,7 @@ function TarjetaIndicador({ titulo, valor, icono: Icono, color, onClick }: Tarje
       style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}
     >
       <div className="flex items-start justify-between mb-3">
-        <span className="text-xs font-semibold text-ink-muted uppercase tracking-wide leading-snug flex-1">
+        <span className="text-[11px] font-semibold text-ink-muted uppercase tracking-normal leading-snug flex-1">
           {titulo}
         </span>
         <div className={`p-2 rounded-lg flex-shrink-0 ml-2 ${color}`}>
