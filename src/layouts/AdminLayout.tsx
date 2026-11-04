@@ -11,6 +11,7 @@ import {
 } from 'lucide-react'
 import { useAuth } from '../features/auth/AuthContext'
 import { t } from '../textos/es'
+import Logo from '../components/Logo'
 
 interface NavItemDef {
   to: string
@@ -120,9 +121,9 @@ export default function AdminLayout() {
       {/* Sidebar — escritorio */}
       <aside className="hidden lg:flex flex-col w-64 bg-navy flex-shrink-0">
         <div className="px-6 py-5 border-b border-white/10">
-          <span className="text-white font-semibold text-xl tracking-wide">
-            Nexpak
-          </span>
+          <Link to="/admin" aria-label="Nexpak — ir al panel">
+            <Logo variante="horizontal" tono="blanco" alto={28} alt="" />
+          </Link>
         </div>
         <SidebarBody />
       </aside>
@@ -144,9 +145,7 @@ export default function AdminLayout() {
         aria-label="Menú de navegación"
       >
         <div className="flex items-center justify-between px-6 py-4 border-b border-white/10">
-          <span className="text-white font-semibold text-lg tracking-wide">
-            Nexpak
-          </span>
+          <Logo variante="horizontal" tono="blanco" alto={24} />
           <button
             onClick={() => setMenuAbierto(false)}
             className="text-white/60 hover:text-white transition-colors cursor-pointer p-1 -mr-1"
@@ -169,9 +168,7 @@ export default function AdminLayout() {
           >
             <Menu size={22} aria-hidden="true" />
           </button>
-          <span className="ml-3 font-semibold text-navy text-lg tracking-wide">
-            Nexpak
-          </span>
+          <Logo variante="isotipo" tono="color" alto={28} className="ml-3" />
         </header>
 
         <main className="flex-1 overflow-y-auto">

@@ -1,5 +1,6 @@
 import { isRouteErrorResponse, Link, useRouteError } from 'react-router-dom'
 import { t } from '../../textos/es'
+import Logo from '../../components/Logo'
 
 export default function NotFoundPage() {
   const error = useRouteError()
@@ -10,6 +11,11 @@ export default function NotFoundPage() {
   return (
     <main className="min-h-screen bg-canvas flex items-center justify-center px-4">
       <div className="text-center max-w-sm">
+        <div className="flex justify-center mb-8">
+          <Link to="/" aria-label="Ir al inicio de Nexpak">
+            <Logo variante="isotipo" tono="color" alto={36} alt="" />
+          </Link>
+        </div>
         <p className="text-8xl font-semibold text-navy/15 font-mono select-none mb-4">
           404
         </p>

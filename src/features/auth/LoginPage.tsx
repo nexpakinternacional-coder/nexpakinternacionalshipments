@@ -4,6 +4,7 @@ import type { AuthError } from '@supabase/supabase-js'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from './AuthContext'
 import { t } from '../../textos/es'
+import Logo from '../../components/Logo'
 
 function mapearError(error: AuthError): string {
   const msg = error.message.toLowerCase()
@@ -95,7 +96,7 @@ export default function LoginPage() {
       {/* ── Panel izquierdo (solo escritorio) ──────────────────────────────── */}
       <div className="hidden lg:flex flex-col justify-between w-[46%] xl:w-5/12 bg-navy p-12 select-none">
         {/* Logo */}
-        <span className="text-white text-2xl font-semibold tracking-wide">Nexpak</span>
+        <Logo variante="horizontal" tono="blanco" alto={32} />
 
         {/* Gráfico decorativo */}
         <div className="flex justify-center">
@@ -117,8 +118,8 @@ export default function LoginPage() {
       <div className="flex-1 flex items-center justify-center px-4 py-12">
         <div className="w-full max-w-sm">
           {/* Logo (solo móvil) */}
-          <div className="lg:hidden text-center mb-10">
-            <span className="text-navy text-2xl font-semibold tracking-wide">Nexpak</span>
+          <div className="lg:hidden flex justify-center mb-10">
+            <Logo variante="horizontal" tono="color" alto={32} />
           </div>
 
           {/* Card del formulario */}

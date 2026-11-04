@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { ArrowRight, BellRing, Globe2, Search } from 'lucide-react'
 import { normalizarGuia, validarGuia } from '../../lib/guia'
 import { t } from '../../textos/es'
+import Logo from '../../components/Logo'
 
 function formatarInputGuia(raw: string): string {
   const limpio = raw.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 10)
@@ -68,7 +69,7 @@ export default function InicioPage() {
       {/* Cabecera */}
       <header className="px-6 pt-8 pb-0">
         <div className="max-w-2xl mx-auto">
-          <span className="text-2xl font-semibold text-navy tracking-tight">{t.app.nombre}</span>
+          <Logo variante="horizontal" tono="color" alto={32} />
         </div>
       </header>
 

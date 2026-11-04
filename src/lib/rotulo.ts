@@ -1,6 +1,7 @@
 import type { Database } from './database.types'
 import { formatearGuia } from './guia'
 import { formatearFecha, formatearPeso, formatearDimensiones } from './formato'
+import logoNegroUrl from '../assets/marca/logo-horizontal-negro.svg?url'
 
 type Envio = Database['public']['Tables']['envios']['Row']
 
@@ -13,6 +14,25 @@ const URL_BASE =
 // 100 × 150 mm in points (1 mm = 2.8346 pt)
 const W_PT = 283.46
 const H_PT = 425.2
+
+// Viewbox del logo horizontal: 365.88 × 68
+const LOGO_ASPECTO = 365.88 / 68
+
+async function rasterizarSvg(url: string, anchoPx: number, altoPx: number, escala = 4): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    img.onload = () => {
+      const canvas = document.createElement('canvas')
+      canvas.width = anchoPx * escala
+      canvas.height = altoPx * escala
+      const ctx = canvas.getContext('2d')!
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
+      resolve(canvas.toDataURL('image/png'))
+    }
+    img.onerror = reject
+    img.src = url
+  })
+}
 
 export async function generarRotuloPdf(envios: Envio[]): Promise<void> {
   const [{ jsPDF }, { default: JsBarcode }, { default: QRCode }] = await Promise.all([
@@ -53,15 +73,16 @@ async function dibujarRotulo(
   doc.setLineWidth(0.5)
 
   // ── Encabezado ──────────────────────────────────────────────────────────────
-  doc.setFont('helvetica', 'bold')
-  doc.setFontSize(20)
-  doc.setTextColor(BLACK)
-  doc.text('NEXPAK', pad, 28)
+  // Logo horizontal negro rasterizado a 4× para nitidez en impresión
+  const logoH = 20
+  const logoW = Math.round(logoH * LOGO_ASPECTO)
+  const logoPng = await rasterizarSvg(logoNegroUrl, logoW, logoH)
+  doc.addImage(logoPng, 'PNG', pad, 10, logoW, logoH)
 
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(9)
   doc.setTextColor(GRAY)
-  doc.text(servicio, W_PT - pad, 28, { align: 'right' })
+  doc.text(servicio, W_PT - pad, 24, { align: 'right' })
 
   // Línea separadora encabezado
   doc.setLineWidth(1)
