@@ -5,7 +5,7 @@ import { supabase } from '../../lib/supabase'
 import { type Tables } from '../../lib/supabase'
 import { useAuth } from '../auth/AuthContext'
 import { formatearGuia } from '../../lib/guia'
-import { formatearFechaHora, formatearSoloFecha } from '../../lib/formato'
+import { formatearFechaHora, formatearSoloFecha, formatearPeso, formatearDimensiones, formatearMoneda } from '../../lib/formato'
 import { ESTADOS } from '../../lib/estados'
 import BadgeEstado from '../../components/BadgeEstado'
 import { Skeleton } from '../../components/Skeleton'
@@ -15,7 +15,10 @@ import PanelEstado from '../eventos/PanelEstado'
 import { t } from '../../textos/es'
 
 type Envio = Tables<'envios'>
-type Evento = Tables<'eventos_envio'>
+type Evento = Tables<'eventos_envio'> & {
+  editado_por?: string | null
+  editado_en?: string | null
+}
 
 interface ToastDato {
   msg: string
@@ -255,6 +258,7 @@ export default function DetalleEnvioPage() {
       envioData.inactivado_por,
       ...(eventosData ?? []).map(e => e.creado_por),
       ...(eventosData ?? []).map(e => e.anulado_por),
+      ...(eventosData ?? []).map(e => (e as Evento).editado_por ?? null),
     ]
     const uniqueIds = [...new Set(allIds.filter((x): x is string => x !== null && x !== undefined))]
     if (uniqueIds.length > 0) {
@@ -641,17 +645,17 @@ export default function DetalleEnvioPage() {
           <Campo label={t.envios.formulario.descripcion} value={envio.descripcion_contenido} />
           <Campo
             label={t.envios.formulario.peso}
-            value={envio.peso_kg != null ? `${envio.peso_kg} kg` : null}
+            value={envio.peso_kg != null ? formatearPeso(Number(envio.peso_kg)) : null}
           />
           {envio.largo_cm && envio.ancho_cm && envio.alto_cm && (
             <Campo
               label="Dimensiones"
-              value={`${envio.largo_cm} × ${envio.ancho_cm} × ${envio.alto_cm} cm`}
+              value={formatearDimensiones(Number(envio.largo_cm), Number(envio.ancho_cm), Number(envio.alto_cm))}
             />
           )}
           <Campo
             label={t.envios.formulario.valorDeclarado}
-            value={envio.valor_declarado != null ? `${envio.valor_declarado} ${envio.moneda}` : null}
+            value={envio.valor_declarado != null ? formatearMoneda(Number(envio.valor_declarado), envio.moneda) : null}
           />
         </TarjetaInfo>
 
@@ -708,7 +712,13 @@ export default function DetalleEnvioPage() {
                         <span className="text-xs text-ink-muted">
                           {formatearFechaHora(ev.ocurrido_en)}
                         </span>
-                        {fueEditado && !ev.anulado && (
+                        {ev.editado_por && !ev.anulado && (
+                          <span className="text-xs text-ink-muted italic">
+                            · editado por {perfilesMap[ev.editado_por] ?? '?'}
+                            {ev.editado_en && ` el ${formatearFechaHora(ev.editado_en)}`}
+                          </span>
+                        )}
+                        {fueEditado && !ev.editado_por && !ev.anulado && (
                           <span className="text-xs text-ink-muted italic">
                             · {t.eventos.eventoEditado}
                           </span>
