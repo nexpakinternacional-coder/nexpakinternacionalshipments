@@ -181,7 +181,8 @@ Marca cada fase con [x] cuando esté terminada.
 - [x] **Fase 3: Auth admin.** Login, rutas protegidas, AdminLayout y cierre de sesión.
 - [x] **Fase 4: Envíos.** Crear envío (formulario validado), listado con búsqueda y filtros, y vista de detalle.
 - [x] **Fase 5: Estados.** Cambiar estado (estado, ubicación, notas) y ver el historial en el detalle.
-- [x] **Fase 6: Vista pública.** Buscador, validación de la guía, línea de tiempo y actualización en vivo.
+- [x] **Fase 6: Vista pública.** Buscador, validación de la guía, línea de tiempo y actualización en vivo. Incluye auditoría de autores, pulido visual (fase 6b), script db:tipos y verificar:rutas.
+- [x] **Fase D1: Logo e identidad de marca.** Componente `<Logo />`, archivos en `src/assets/marca/`, favicons reales, `manifest.webmanifest`, Open Graph con `og-image.png`, hoja de marca en `/dev/marca` (solo DEV), y sección Marca en CLAUDE.md.
 - [ ] **Fase 7: Despliegue.** Cloudflare Pages, dominio, URLs de Auth, keep-alive y respaldo.
 - [ ] **Fase 8: Extras.** Rótulo imprimible en PDF con QR, notificaciones por correo, inglés y resumen en el dashboard.
 
@@ -204,7 +205,34 @@ Marca cada fase con [x] cuando esté terminada.
 
 - **IBM Plex Sans** 400 y 600 para toda la interfaz (`@fontsource/ibm-plex-sans`).
 - **IBM Plex Mono** 400 para guías, IDs y datos numéricos en tablas (`@fontsource/ibm-plex-mono`).
+- **Archivo ExtraBold** es la tipografía del logotipo (nombre "Nexpak"), pero ya está convertida a trazos en los SVG. No se usa como webfont.
 - Sin itálicas en la interfaz. Sin fuentes decorativas.
+
+### Marca — archivos
+
+| Archivo | Ruta |
+|---|---|
+| `isotipo.svg` | `src/assets/marca/` |
+| `isotipo-blanco.svg` | `src/assets/marca/` |
+| `isotipo-negro.svg` | `src/assets/marca/` |
+| `logo-horizontal.svg` | `src/assets/marca/` |
+| `logo-horizontal-blanco.svg` | `src/assets/marca/` |
+| `logo-horizontal-negro.svg` | `src/assets/marca/` |
+| `favicon.svg`, `favicon.ico` | `public/` |
+| `apple-touch-icon.png` | `public/` |
+| `icon-192.png`, `icon-512.png`, `icon-maskable-512.png` | `public/` |
+| `og-image.png` (1200×630) | `public/` |
+| `generar-logo.js`, `hoja-marca.png` | `docs/marca/entregables/` (referencia) |
+
+Viewboxes: isotipo `0 0 80 68`, logo horizontal `0 0 365.88 68`. El componente `<Logo />` en `src/components/Logo.tsx` importa los SVG como `?url` y calcula el ancho a partir del `alto` y la proporción del viewBox.
+
+### Marca — reglas de uso
+
+- Espacio libre alrededor del logo igual a la altura de la tapa naranja (`#E8500A`).
+- Tamaño mínimo: 24 px de alto para el logo horizontal; 16 px para el isotipo.
+- Versión blanca (`tono="blanco"`) sobre azul marino o fondos oscuros.
+- Versión negra (`tono="negro"`) para impresión térmica (rótulo PDF).
+- **No hacer:** deformar, rotar, cambiar colores, agregar sombras o degradados, ni separar la tapa naranja de la N.
 
 ### Estilo general
 

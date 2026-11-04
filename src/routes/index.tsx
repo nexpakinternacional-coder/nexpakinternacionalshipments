@@ -10,14 +10,21 @@ import DashboardPage from '../features/auth/DashboardPage'
 import EnviosPage from '../features/envios/EnviosPage'
 import NuevoEnvioPage from '../features/envios/NuevoEnvioPage'
 import DetalleEnvioPage from '../features/envios/DetalleEnvioPage'
+import MarcaPage from '../features/dev/MarcaPage'
 
-// Ruta de diagnóstico visual — solo en desarrollo, no llega al build de producción
+// Rutas de diagnóstico visual — solo en desarrollo, no llegan al build de producción
 const rutasDev = import.meta.env.DEV
   ? [
       {
         element: <AdminLayout />,
         children: [
           { path: '/dev/layout', element: <NuevoEnvioPage /> },
+        ],
+      },
+      {
+        element: <PublicLayout />,
+        children: [
+          { path: '/dev/marca', element: <MarcaPage /> },
         ],
       },
     ]
