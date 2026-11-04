@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
-import { Plus, Search, X } from 'lucide-react'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { Plus, Printer, Search, X } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { type Tables } from '../../lib/supabase'
 import { ESTADOS, ESTADOS_EXCEPCION, FLUJO_NORMAL, type EstadoEnvio } from '../../lib/estados'
@@ -33,11 +33,23 @@ const COLS =
 
 export default function EnviosPage() {
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
+
+  // Leer filtros iniciales desde URL (desde el dashboard)
+  const estadoParamInicial = searchParams.get('estado') as EstadoEnvio | null
+  const filtroParamInicial = searchParams.get('filtro') as 'excepciones' | null
+  const actividadParam = searchParams.get('actividad') as FiltroActividad | null
 
   const [busquedaInput, setBusquedaInput] = useState('')
   const [busquedaFinal, setBusquedaFinal] = useState('')
-  const [filtro, setFiltro] = useState<Filtro>('todos')
-  const [filtroActividad, setFiltroActividad] = useState<FiltroActividad>('activos')
+  const [filtro, setFiltro] = useState<Filtro>(
+    filtroParamInicial === 'excepciones'
+      ? 'excepciones'
+      : estadoParamInicial ?? 'todos',
+  )
+  const [filtroActividad, setFiltroActividad] = useState<FiltroActividad>(
+    actividadParam ?? 'activos',
+  )
   const [pagina, setPagina] = useState(0)
   const [filas, setFilas] = useState<Fila[]>([])
   const [total, setTotal] = useState(0)
@@ -47,6 +59,13 @@ export default function EnviosPage() {
   const [seleccionados, setSeleccionados] = useState<Set<string>>(new Set())
   const [mostrarPanelMasivo, setMostrarPanelMasivo] = useState(false)
   const [toastMsg, setToastMsg] = useState('')
+  const [imprimiendo, setImprimiendo] = useState(false)
+
+  // Limpiar query params de URL después del montaje inicial (para que no persistan al navegar)
+  useEffect(() => {
+    if (searchParams.toString()) setSearchParams({}, { replace: true })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -56,27 +75,17 @@ export default function EnviosPage() {
     return () => clearTimeout(timer)
   }, [busquedaInput])
 
-  function cambiarFiltro(f: Filtro) {
-    setFiltro(f)
-    setPagina(0)
-  }
+  function cambiarFiltro(f: Filtro) { setFiltro(f); setPagina(0) }
+  function cambiarFiltroActividad(f: FiltroActividad) { setFiltroActividad(f); setPagina(0) }
 
-  function cambiarFiltroActividad(f: FiltroActividad) {
-    setFiltroActividad(f)
-    setPagina(0)
-  }
-
-  // Clear selection when page/filters change
   useEffect(() => {
     setSeleccionados(new Set())
   }, [busquedaFinal, filtro, filtroActividad, pagina])
 
   useEffect(() => {
     let cancelado = false
-
     async function cargar() {
       setCargando(true)
-
       const desde = pagina * POR_PAGINA
       const hasta = (pagina + 1) * POR_PAGINA - 1
 
@@ -91,9 +100,7 @@ export default function EnviosPage() {
 
       if (busquedaFinal.trim()) {
         const guiaNorm = busquedaFinal.toUpperCase().replace(/[-\s]/g, '')
-        q = q.or(
-          `guia.ilike.%${guiaNorm}%,destinatario_nombre.ilike.%${busquedaFinal.trim()}%`,
-        )
+        q = q.or(`guia.ilike.%${guiaNorm}%,destinatario_nombre.ilike.%${busquedaFinal.trim()}%`)
       }
 
       if (filtro === 'excepciones') {
@@ -110,11 +117,8 @@ export default function EnviosPage() {
       }
       setCargando(false)
     }
-
     cargar()
-    return () => {
-      cancelado = true
-    }
+    return () => { cancelado = true }
   }, [busquedaFinal, filtro, filtroActividad, pagina, refreshKey])
 
   const inicio = pagina * POR_PAGINA + 1
@@ -139,17 +143,9 @@ export default function EnviosPage() {
   function toggleTodos() {
     const ids = filaActivasEnPagina.map(f => f.id)
     if (todasActiasSeleccionadas) {
-      setSeleccionados(prev => {
-        const next = new Set(prev)
-        ids.forEach(id => next.delete(id))
-        return next
-      })
+      setSeleccionados(prev => { const next = new Set(prev); ids.forEach(id => next.delete(id)); return next })
     } else {
-      setSeleccionados(prev => {
-        const next = new Set(prev)
-        ids.forEach(id => next.add(id))
-        return next
-      })
+      setSeleccionados(prev => { const next = new Set(prev); ids.forEach(id => next.add(id)); return next })
     }
   }
 
@@ -161,10 +157,24 @@ export default function EnviosPage() {
   function onResultadoMasivo(resultado?: { actualizados: number; omitidos: number }) {
     setMostrarPanelMasivo(false)
     setSeleccionados(new Set())
-    if (resultado) {
-      mostrarToast(t.eventos.resultadoMasivo(resultado.actualizados, resultado.omitidos))
-    }
+    if (resultado) mostrarToast(t.eventos.resultadoMasivo(resultado.actualizados, resultado.omitidos))
     setRefreshKey(k => k + 1)
+  }
+
+  async function handleImprimirMasivo() {
+    const ids = [...seleccionados]
+    if (!ids.length) return
+    setImprimiendo(true)
+    try {
+      // Buscar datos completos solo de los seleccionados activos
+      const { data } = await supabase.from('envios').select('*').in('id', ids).eq('activo', true)
+      if (data?.length) {
+        const { generarRotuloPdf } = await import('../../lib/rotulo')
+        await generarRotuloPdf(data)
+      }
+    } finally {
+      setImprimiendo(false)
+    }
   }
 
   const conteoSeleccionados = seleccionados.size
@@ -205,7 +215,7 @@ export default function EnviosPage() {
         </Link>
       </div>
 
-      {/* Filters */}
+      {/* Filtros */}
       <div className="flex flex-col sm:flex-row gap-3 mb-4">
         <div className="relative flex-1 min-w-0">
           <Search
@@ -238,23 +248,19 @@ export default function EnviosPage() {
           <option value="todos">{t.envios.filtroTodos}</option>
           <optgroup label="Flujo normal">
             {FLUJO_NORMAL.map(e => (
-              <option key={e} value={e}>
-                {ESTADOS[e].etiqueta}
-              </option>
+              <option key={e} value={e}>{ESTADOS[e].etiqueta}</option>
             ))}
           </optgroup>
           <optgroup label="Excepciones">
             {ESTADOS_EXCEPCION.map(e => (
-              <option key={e} value={e}>
-                {ESTADOS[e].etiqueta}
-              </option>
+              <option key={e} value={e}>{ESTADOS[e].etiqueta}</option>
             ))}
           </optgroup>
           <option value="excepciones">{t.envios.filtroExcepciones}</option>
         </select>
       </div>
 
-      {/* Table — desktop */}
+      {/* Tabla — desktop */}
       <div className="hidden md:block bg-surface border border-border rounded-xl overflow-hidden">
         <table className="w-full text-sm">
           <thead>
@@ -269,24 +275,12 @@ export default function EnviosPage() {
                   className="cursor-pointer disabled:cursor-not-allowed"
                 />
               </th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-ink-muted uppercase tracking-wide">
-                {t.envios.columnaGuia}
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-ink-muted uppercase tracking-wide">
-                {t.envios.columnaDestinatario}
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-ink-muted uppercase tracking-wide hidden md:table-cell">
-                {t.envios.columnaDestino}
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-ink-muted uppercase tracking-wide">
-                {t.envios.columnaEstado}
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-ink-muted uppercase tracking-wide hidden lg:table-cell">
-                {t.envios.columnaServicio}
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-ink-muted uppercase tracking-wide hidden lg:table-cell">
-                {t.envios.columnaFecha}
-              </th>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-ink-muted uppercase tracking-wide">{t.envios.columnaGuia}</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-ink-muted uppercase tracking-wide">{t.envios.columnaDestinatario}</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-ink-muted uppercase tracking-wide hidden md:table-cell">{t.envios.columnaDestino}</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-ink-muted uppercase tracking-wide">{t.envios.columnaEstado}</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-ink-muted uppercase tracking-wide hidden lg:table-cell">{t.envios.columnaServicio}</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-ink-muted uppercase tracking-wide hidden lg:table-cell">{t.envios.columnaFecha}</th>
             </tr>
           </thead>
           <tbody>
@@ -294,25 +288,18 @@ export default function EnviosPage() {
               Array.from({ length: 6 }).map((_, i) => <SkeletonFilaTabla key={i} />)
             ) : filas.length === 0 ? (
               <tr>
-                <td colSpan={7} className="p-0">
-                  <EstadoVacio />
-                </td>
+                <td colSpan={7} className="p-0"><EstadoVacio /></td>
               </tr>
             ) : (
               filas.map(fila => (
                 <tr
                   key={fila.id}
                   className={`border-b border-border last:border-0 transition-colors ${
-                    fila.activo
-                      ? 'hover:bg-canvas cursor-pointer'
-                      : 'opacity-60 cursor-pointer'
+                    fila.activo ? 'hover:bg-canvas cursor-pointer' : 'opacity-60 cursor-pointer'
                   }`}
                   onClick={() => navigate(`/admin/envios/${fila.id}`)}
                 >
-                  <td
-                    className="px-4 py-3.5"
-                    onClick={e => e.stopPropagation()}
-                  >
+                  <td className="px-4 py-3.5" onClick={e => e.stopPropagation()}>
                     <input
                       type="checkbox"
                       checked={seleccionados.has(fila.id)}
@@ -323,9 +310,7 @@ export default function EnviosPage() {
                     />
                   </td>
                   <td className="px-4 py-3.5">
-                    <span className="font-mono font-medium text-navy text-sm">
-                      {formatearGuia(fila.guia)}
-                    </span>
+                    <span className="font-mono font-medium text-navy text-sm">{formatearGuia(fila.guia)}</span>
                   </td>
                   <td className="px-4 py-3.5 text-ink">{fila.destinatario_nombre}</td>
                   <td className="px-4 py-3.5 text-ink-muted hidden md:table-cell">
@@ -354,14 +339,12 @@ export default function EnviosPage() {
         </table>
       </div>
 
-      {/* Cards — mobile */}
+      {/* Tarjetas — mobile */}
       <div className="md:hidden space-y-2">
         {cargando ? (
           Array.from({ length: 4 }).map((_, i) => <SkeletonTarjeta key={i} />)
         ) : filas.length === 0 ? (
-          <div className="bg-surface border border-border rounded-xl">
-            <EstadoVacio />
-          </div>
+          <div className="bg-surface border border-border rounded-xl"><EstadoVacio /></div>
         ) : (
           filas.map(fila => (
             <div
@@ -380,14 +363,9 @@ export default function EnviosPage() {
                   aria-label={`Seleccionar ${fila.guia}`}
                   onClick={e => e.stopPropagation()}
                 />
-                <Link
-                  to={`/admin/envios/${fila.id}`}
-                  className="min-w-0 flex-1"
-                >
+                <Link to={`/admin/envios/${fila.id}`} className="min-w-0 flex-1">
                   <div className="flex items-start justify-between gap-2 mb-1.5">
-                    <span className="font-mono font-medium text-navy text-sm">
-                      {formatearGuia(fila.guia)}
-                    </span>
+                    <span className="font-mono font-medium text-navy text-sm">{formatearGuia(fila.guia)}</span>
                     <div className="flex items-center gap-1 flex-wrap justify-end">
                       <BadgeEstado estado={fila.estado_actual} size="sm" />
                       {!fila.activo && (
@@ -398,9 +376,7 @@ export default function EnviosPage() {
                     </div>
                   </div>
                   <p className="text-sm text-ink font-medium mb-0.5">{fila.destinatario_nombre}</p>
-                  <p className="text-xs text-ink-muted">
-                    {fila.destinatario_ciudad}, {fila.destinatario_pais}
-                  </p>
+                  <p className="text-xs text-ink-muted">{fila.destinatario_ciudad}, {fila.destinatario_pais}</p>
                 </Link>
               </div>
             </div>
@@ -408,7 +384,7 @@ export default function EnviosPage() {
         )}
       </div>
 
-      {/* Pagination */}
+      {/* Paginación */}
       {!cargando && total > POR_PAGINA && (
         <div className="flex items-center justify-between mt-4 pt-2">
           <p className="text-xs text-ink-muted">{t.envios.mostrandoTotal(inicio, fin, total)}</p>
@@ -431,9 +407,10 @@ export default function EnviosPage() {
         </div>
       )}
 
-      {/* Bulk action bar */}
+      {/* Barra de acciones masivas */}
       {conteoSeleccionados > 0 && (
-        <div className="fixed bottom-0 left-0 right-0 z-30 bg-navy text-white px-6 py-3 flex items-center gap-4 flex-wrap"
+        <div
+          className="fixed bottom-0 left-0 right-0 z-30 bg-navy text-white px-6 py-3 flex items-center gap-3 flex-wrap"
           style={{ boxShadow: '0 -2px 12px rgba(0,0,0,0.15)' }}
         >
           <span className="text-sm font-medium flex-1 min-w-0">
@@ -444,6 +421,14 @@ export default function EnviosPage() {
             className="flex-shrink-0 px-4 py-2 bg-white text-navy text-sm font-semibold rounded-lg hover:bg-canvas cursor-pointer transition-colors"
           >
             {t.eventos.actualizarMasivo}
+          </button>
+          <button
+            onClick={handleImprimirMasivo}
+            disabled={imprimiendo}
+            className="flex-shrink-0 flex items-center gap-1.5 px-4 py-2 bg-white/15 text-white text-sm font-semibold rounded-lg hover:bg-white/25 disabled:opacity-50 cursor-pointer transition-colors"
+          >
+            <Printer size={14} strokeWidth={2} />
+            {imprimiendo ? t.envios.generandoRotulo : t.envios.imprimirRotulos}
           </button>
           <button
             onClick={() => setSeleccionados(new Set())}
