@@ -2,7 +2,7 @@ import { defineConfig } from '@playwright/test'
 
 export default defineConfig({
   testDir: './scripts',
-  testMatch: ['verificar-layout.ts'],
+  testMatch: ['verificar-layout.ts', 'verificar-rutas.ts'],
   timeout: 90_000,
   retries: 0,
   reporter: 'list',

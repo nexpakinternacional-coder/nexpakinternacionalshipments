@@ -147,15 +147,21 @@ Las rutas `/admin/*` están protegidas: sin sesión, redirigen al login.
 - Commits pequeños y descriptivos, en español.
 - El desarrollador usa Windows: los comandos de terminal deben funcionar en PowerShell.
 - Todo cambio visual en el layout del panel admin se verifica con `npm run verificar:layout` antes de entregarlo. El script prueba 5 viewports (1366×768, 1920×1080, 768×1024, 390×844, 440×956) y comprueba: sin doble scroll, solo `<main>` scrollea, barra de acciones visible.
+- **Antes de reportar cualquier cambio como terminado**, correr `npm run verificar:rutas`. El script abre cada ruta de la app con Playwright y falla si: (a) hay cualquier error en la consola del navegador (SyntaxError, módulo sin export nombrado, ReferenceError, etc.) o (b) la página queda en blanco. Esto detecta roturas en tiempo de ejecución que `tsc` no ve porque Vite no ejecuta tsc en modo dev.
 
 ## Comandos
 
 ```
 npm install
-npm run dev       # servidor local
-npm run build     # build de producción (carpeta dist/)
+npm run dev             # servidor local
+npm run build           # build de producción (carpeta dist/)
 npm run preview
-npx supabase ...  # CLI de Supabase vía npx, sin instalación global
+npm run db:tipos        # regenera src/lib/database.types.ts desde el esquema remoto de Supabase
+                        # USAR SIEMPRE ESTO en lugar de npx supabase gen types ... > archivo
+                        # El script elimina líneas de advertencia del CLI automáticamente y corre tsc.
+npm run verificar:rutas # abre cada ruta y falla si hay errores de consola o página en blanco
+npm run verificar:layout # verifica layout del panel admin en 5 viewports
+npx supabase ...        # CLI de Supabase vía npx, sin instalación global
 ```
 
 ## Despliegue

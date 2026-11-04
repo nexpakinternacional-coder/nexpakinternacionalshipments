@@ -10,7 +10,9 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "verificar:layout": "playwright test"
+    "db:tipos": "node scripts/db-tipos.mjs",
+    "verificar:layout": "playwright test scripts/verificar-layout.ts",
+    "verificar:rutas": "playwright test scripts/verificar-rutas.ts"
   },
   "dependencies": {
     "@fontsource/ibm-plex-mono": "^5.3.0",
