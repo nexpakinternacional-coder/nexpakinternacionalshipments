@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { ArrowLeft, Check, Copy, MoreHorizontal, Pencil, RefreshCw } from 'lucide-react'
+import { ArrowLeft, Check, Copy, MoreHorizontal, Pencil, Printer, RefreshCw } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { type Tables } from '../../lib/supabase'
 import { useAuth } from '../auth/AuthContext'
@@ -16,6 +16,12 @@ import { t } from '../../textos/es'
 
 type Envio = Tables<'envios'>
 type Evento = Tables<'eventos_envio'>
+
+interface ToastDato {
+  msg: string
+  action?: { label: string; fn: () => void }
+  duration?: number
+}
 
 function TarjetaInfo({ titulo, children }: { titulo: string; children: React.ReactNode }) {
   return (
@@ -61,6 +67,57 @@ function SkeletonDetalle() {
   )
 }
 
+// Chip de contexto que muestra guía + destinatario + estado
+function ContextoEnvio({
+  guia,
+  destinatario,
+  estado,
+}: {
+  guia: string
+  destinatario: string
+  estado: string
+}) {
+  return (
+    <div className="bg-canvas border border-border rounded-lg px-4 py-3 mb-4 flex flex-wrap gap-2 text-sm">
+      <span className="font-mono font-semibold text-navy">{guia}</span>
+      <span className="text-ink-muted">·</span>
+      <span className="text-ink">{destinatario}</span>
+      <span className="text-ink-muted">·</span>
+      <BadgeEstado estado={estado as never} size="sm" />
+    </div>
+  )
+}
+
+// Botones de motivo rápido
+function BotonesMotivo({
+  motivos,
+  seleccionado,
+  onSeleccionar,
+}: {
+  motivos: string[]
+  seleccionado: string | null
+  onSeleccionar: (m: string) => void
+}) {
+  return (
+    <div className="flex flex-wrap gap-2 mb-3">
+      {motivos.map(m => (
+        <button
+          key={m}
+          type="button"
+          onClick={() => onSeleccionar(m)}
+          className={`px-3 py-1.5 rounded-lg text-sm border transition-colors cursor-pointer ${
+            seleccionado === m
+              ? 'border-navy bg-navy/5 text-navy font-semibold'
+              : 'border-border text-ink hover:border-navy/40'
+          }`}
+        >
+          {m}
+        </button>
+      ))}
+    </div>
+  )
+}
+
 export default function DetalleEnvioPage() {
   const { id } = useParams<{ id: string }>()
   const { perfil } = useAuth()
@@ -72,13 +129,17 @@ export default function DetalleEnvioPage() {
   const [editando, setEditando] = useState(false)
   const [copiado, setCopiado] = useState(false)
 
-  // Inactivar / reactivar
+  // Inactivar
   const [inactivando, setInactivando] = useState(false)
-  const [reactivando, setReactivando] = useState(false)
-  const [motivoInactivar, setMotivoInactivar] = useState('')
-  const [confirmInput, setConfirmInput] = useState('')
+  const [motivoInactivarRapido, setMotivoInactivarRapido] = useState<string | null>(null)
+  const [motivoInactivarTexto, setMotivoInactivarTexto] = useState('')
   const [errorInactivar, setErrorInactivar] = useState('')
   const [guardandoInactivar, setGuardandoInactivar] = useState(false)
+  const cancelInactivarRef = useRef<HTMLButtonElement>(null)
+
+  // Reactivar
+  const [reactivando, setReactivando] = useState(false)
+  const cancelReactivarRef = useRef<HTMLButtonElement>(null)
 
   // Panel de estado
   const [mostrarPanelEstado, setMostrarPanelEstado] = useState(false)
@@ -86,9 +147,11 @@ export default function DetalleEnvioPage() {
 
   // Anular evento
   const [eventoAnulando, setEventoAnulando] = useState<Evento | null>(null)
-  const [motivoAnulacion, setMotivoAnulacion] = useState('')
+  const [motivoAnularRapido, setMotivoAnularRapido] = useState<string | null>(null)
+  const [motivoAnularTexto, setMotivoAnularTexto] = useState('')
   const [errorAnular, setErrorAnular] = useState('')
   const [guardandoAnular, setGuardandoAnular] = useState(false)
+  const cancelAnularRef = useRef<HTMLButtonElement>(null)
 
   // ⋯ menu
   const [menuAbiertoId, setMenuAbiertoId] = useState<string | null>(null)
@@ -98,11 +161,28 @@ export default function DetalleEnvioPage() {
   const [perfilesMap, setPerfilesMap] = useState<Record<string, string>>({})
   const [eventosEditados, setEventosEditados] = useState<Set<string>>(new Set())
 
-  // Toast
-  const [toastMsg, setToastMsg] = useState('')
+  // Rótulo
+  const [imprimiendo, setImprimiendo] = useState(false)
+
+  // Toast interactivo
+  const [toastDato, setToastDato] = useState<ToastDato | null>(null)
+  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const esAdmin = perfil?.rol === 'admin'
 
+  // ── Motivos finales calculados ──────────────────────────────────────────────
+  const motivoFinalInactivar =
+    motivoInactivarRapido === 'Otro'
+      ? motivoInactivarTexto.trim()
+      : (motivoInactivarRapido ?? '')
+
+  const motivoFinalAnular =
+    motivoAnularRapido === 'Otro' ? motivoAnularTexto.trim() : (motivoAnularRapido ?? '')
+
+  const puedeInactivar = motivoFinalInactivar.length > 0 && !guardandoInactivar
+  const puedeAnular = motivoFinalAnular.length > 0 && !guardandoAnular
+
+  // ── Cerrar menú ⋯ al click fuera ───────────────────────────────────────────
   useEffect(() => {
     if (!menuAbiertoId) return
     function handleClick(e: MouseEvent) {
@@ -114,6 +194,40 @@ export default function DetalleEnvioPage() {
     return () => document.removeEventListener('mousedown', handleClick)
   }, [menuAbiertoId])
 
+  // ── Foco inicial en Cancelar (acciones destructivas) ───────────────────────
+  useEffect(() => {
+    if (inactivando) setTimeout(() => cancelInactivarRef.current?.focus(), 50)
+  }, [inactivando])
+
+  useEffect(() => {
+    if (reactivando) setTimeout(() => cancelReactivarRef.current?.focus(), 50)
+  }, [reactivando])
+
+  useEffect(() => {
+    if (eventoAnulando) setTimeout(() => cancelAnularRef.current?.focus(), 50)
+  }, [eventoAnulando])
+
+  // ── Teclado: Esc cierra modales ────────────────────────────────────────────
+  useEffect(() => {
+    function handleKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') {
+        if (inactivando) { setInactivando(false); resetInactivar() }
+        if (reactivando) setReactivando(false)
+        if (eventoAnulando) { setEventoAnulando(null); resetAnular() }
+      }
+    }
+    window.addEventListener('keydown', handleKey)
+    return () => window.removeEventListener('keydown', handleKey)
+  }, [inactivando, reactivando, eventoAnulando])
+
+  // ── Toast ───────────────────────────────────────────────────────────────────
+  function mostrarToast(dato: ToastDato) {
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current)
+    setToastDato(dato)
+    toastTimerRef.current = setTimeout(() => setToastDato(null), dato.duration ?? 3500)
+  }
+
+  // ── Carga datos ─────────────────────────────────────────────────────────────
   const cargar = useCallback(async () => {
     if (!id) return
     setCargando(true)
@@ -168,15 +282,21 @@ export default function DetalleEnvioPage() {
     setCargando(false)
   }, [id, perfil?.rol])
 
-  useEffect(() => {
-    cargar()
-  }, [cargar])
+  useEffect(() => { cargar() }, [cargar])
 
-  function mostrarToast(msg: string) {
-    setToastMsg(msg)
-    setTimeout(() => setToastMsg(''), 3500)
+  // ── Reset forms ─────────────────────────────────────────────────────────────
+  function resetInactivar() {
+    setMotivoInactivarRapido(null)
+    setMotivoInactivarTexto('')
+    setErrorInactivar('')
+  }
+  function resetAnular() {
+    setMotivoAnularRapido(null)
+    setMotivoAnularTexto('')
+    setErrorAnular('')
   }
 
+  // ── Copiar guía ─────────────────────────────────────────────────────────────
   async function copiarGuia() {
     if (!envio) return
     await navigator.clipboard.writeText(formatearGuia(envio.guia))
@@ -184,6 +304,7 @@ export default function DetalleEnvioPage() {
     setTimeout(() => setCopiado(false), 2000)
   }
 
+  // ── Editar envío ────────────────────────────────────────────────────────────
   async function handleActualizar(data: EnvioFormData) {
     if (!id) return
     const { error } = await supabase
@@ -203,13 +324,14 @@ export default function DetalleEnvioPage() {
     setEditando(false)
   }
 
+  // ── Inactivar ───────────────────────────────────────────────────────────────
   async function handleInactivar() {
     if (!id) return
     setErrorInactivar('')
     setGuardandoInactivar(true)
     const { error } = await supabase.rpc('inactivar_envio', {
       p_envio_id: id,
-      p_motivo: motivoInactivar.trim(),
+      p_motivo: motivoFinalInactivar,
     })
     if (error) {
       setErrorInactivar(error.message)
@@ -217,27 +339,46 @@ export default function DetalleEnvioPage() {
       return
     }
     setInactivando(false)
-    setMotivoInactivar('')
-    setConfirmInput('')
+    resetInactivar()
     setGuardandoInactivar(false)
     await cargar()
+
+    // Toast con opción Deshacer (8 s)
+    mostrarToast({
+      msg: t.envios.toastInactivado,
+      action: {
+        label: t.envios.toastDeshacer,
+        fn: async () => {
+          setToastDato(null)
+          const { error: errR } = await supabase.rpc('reactivar_envio', { p_envio_id: id })
+          if (!errR) {
+            await cargar()
+            mostrarToast({ msg: t.envios.toastReactivado })
+          }
+        },
+      },
+      duration: 8000,
+    })
   }
 
+  // ── Reactivar ───────────────────────────────────────────────────────────────
   async function handleReactivar() {
     if (!id) return
     const { error } = await supabase.rpc('reactivar_envio', { p_envio_id: id })
     if (error) return
     setReactivando(false)
     await cargar()
+    mostrarToast({ msg: t.envios.toastReactivado })
   }
 
+  // ── Anular evento ───────────────────────────────────────────────────────────
   async function handleAnularEvento() {
     if (!eventoAnulando) return
     setErrorAnular('')
     setGuardandoAnular(true)
     const { error } = await supabase.rpc('anular_evento', {
       p_evento_id: eventoAnulando.id,
-      p_motivo: motivoAnulacion.trim(),
+      p_motivo: motivoFinalAnular,
     })
     if (error) {
       setErrorAnular(error.message)
@@ -245,7 +386,7 @@ export default function DetalleEnvioPage() {
       return
     }
     setEventoAnulando(null)
-    setMotivoAnulacion('')
+    resetAnular()
     setGuardandoAnular(false)
     await cargar()
   }
@@ -254,10 +395,23 @@ export default function DetalleEnvioPage() {
     const wasEditing = !!eventoEditando
     setMostrarPanelEstado(false)
     setEventoEditando(null)
-    mostrarToast(wasEditing ? t.eventos.exitoEdicion : t.eventos.exito)
+    mostrarToast({ msg: wasEditing ? t.eventos.exitoEdicion : t.eventos.exito })
     await cargar()
   }
 
+  // ── Imprimir rótulo ─────────────────────────────────────────────────────────
+  async function handleImprimirRotulo() {
+    if (!envio) return
+    setImprimiendo(true)
+    try {
+      const { generarRotuloPdf } = await import('../../lib/rotulo')
+      await generarRotuloPdf([envio])
+    } finally {
+      setImprimiendo(false)
+    }
+  }
+
+  // ── Loading / not found ─────────────────────────────────────────────────────
   if (cargando) return <SkeletonDetalle />
 
   if (noEncontrado) {
@@ -273,10 +427,7 @@ export default function DetalleEnvioPage() {
           </Link>
           <h1 className="text-xl font-semibold text-ink">{t.envios.detalleNoEncontrado}</h1>
         </div>
-        <Link
-          to="/admin/envios"
-          className="text-sm text-accent-strong hover:underline cursor-pointer"
-        >
+        <Link to="/admin/envios" className="text-sm text-accent-strong hover:underline cursor-pointer">
           {t.envios.detalleVolver}
         </Link>
       </div>
@@ -318,10 +469,6 @@ export default function DetalleEnvioPage() {
     fecha_estimada_entrega: envio.fecha_estimada_entrega ?? '',
   }
 
-  const puedeInactivar =
-    motivoInactivar.trim().length > 0 &&
-    confirmInput.toUpperCase().replace(/-/g, '').trim() === envio.guia
-
   if (editando) {
     return (
       <div className="p-6 lg:p-8 max-w-3xl">
@@ -348,9 +495,7 @@ export default function DetalleEnvioPage() {
     )
   }
 
-  const nombreInactivador = envio.inactivado_por
-    ? (perfilesMap[envio.inactivado_por] ?? '?')
-    : '?'
+  const nombreInactivador = envio.inactivado_por ? (perfilesMap[envio.inactivado_por] ?? '?') : '?'
 
   return (
     <div className="p-6 lg:p-8 max-w-4xl">
@@ -365,7 +510,7 @@ export default function DetalleEnvioPage() {
         <h1 className="text-xl font-semibold text-ink">Detalle del envío</h1>
       </div>
 
-      {/* Inactive banner */}
+      {/* Banner inactivo */}
       {!envio.activo && (
         <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-5">
           <div className="flex items-start justify-between gap-3">
@@ -389,7 +534,7 @@ export default function DetalleEnvioPage() {
         </div>
       )}
 
-      {/* Incomplete data warning */}
+      {/* Datos incompletos */}
       {camposIncompletos.length > 0 && (
         <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 mb-5">
           <p className="text-sm text-amber-800">{t.envios.datosFaltantes(camposIncompletos)}</p>
@@ -446,6 +591,15 @@ export default function DetalleEnvioPage() {
               <Pencil size={14} strokeWidth={2} />
               {t.comun.editar}
             </button>
+            <button
+              onClick={handleImprimirRotulo}
+              disabled={!envio.activo || imprimiendo}
+              className="flex items-center gap-1.5 px-3 py-2 border border-border rounded-lg text-sm text-ink hover:bg-canvas disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
+              title={t.envios.imprimirRotulo}
+            >
+              <Printer size={14} strokeWidth={2} />
+              {imprimiendo ? t.envios.generandoRotulo : t.envios.imprimirRotulo}
+            </button>
             {esAdmin && envio.activo && (
               <button
                 onClick={() => setInactivando(true)}
@@ -497,11 +651,7 @@ export default function DetalleEnvioPage() {
           )}
           <Campo
             label={t.envios.formulario.valorDeclarado}
-            value={
-              envio.valor_declarado != null
-                ? `${envio.valor_declarado} ${envio.moneda}`
-                : null
-            }
+            value={envio.valor_declarado != null ? `${envio.valor_declarado} ${envio.moneda}` : null}
           />
         </TarjetaInfo>
 
@@ -512,17 +662,11 @@ export default function DetalleEnvioPage() {
           />
           <Campo
             label={t.envios.formulario.fechaEstimada}
-            value={
-              envio.fecha_estimada_entrega
-                ? formatearSoloFecha(envio.fecha_estimada_entrega)
-                : null
-            }
+            value={envio.fecha_estimada_entrega ? formatearSoloFecha(envio.fecha_estimada_entrega) : null}
           />
           <div>
             <dt className="text-xs text-ink-muted mb-1.5">{t.rastreo.estadoActual}</dt>
-            <dd>
-              <BadgeEstado estado={envio.estado_actual} />
-            </dd>
+            <dd><BadgeEstado estado={envio.estado_actual} /></dd>
           </div>
         </TarjetaInfo>
       </div>
@@ -532,19 +676,16 @@ export default function DetalleEnvioPage() {
         <h2 className="text-xs font-semibold text-navy uppercase tracking-wide mb-5">
           {t.envios.detalleHistorial}
         </h2>
-
         {eventos.length === 0 ? (
           <p className="text-sm text-ink-muted">{t.comun.cargando}</p>
         ) : (
           <div className="space-y-0">
             {eventos.map((ev, idx) => {
               const info = ESTADOS[ev.estado]
-              const anuladorNombre = ev.anulado_por
-                ? (perfilesMap[ev.anulado_por] ?? '?')
-                : '?'
+              const anuladorNombre = ev.anulado_por ? (perfilesMap[ev.anulado_por] ?? '?') : '?'
               const fueEditado = eventosEditados.has(ev.id)
               const esMenuVisible = !ev.anulado && (perfil?.rol === 'admin' || perfil?.rol === 'operador')
-              const puedeAnular = esAdmin && ev.estado !== 'guia_generada' && !ev.anulado
+              const puedeAnularEv = esAdmin && ev.estado !== 'guia_generada' && !ev.anulado
 
               return (
                 <div key={ev.id} className={`flex gap-4 ${ev.anulado ? 'opacity-60' : ''}`}>
@@ -558,7 +699,6 @@ export default function DetalleEnvioPage() {
                       <div className="w-px flex-1 bg-border my-1" />
                     )}
                   </div>
-
                   <div className={`min-w-0 flex-1 ${idx < eventos.length - 1 ? 'pb-5' : ''}`}>
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex items-center gap-2 flex-wrap mb-1">
@@ -603,7 +743,7 @@ export default function DetalleEnvioPage() {
                                   {t.eventos.menuEditar}
                                 </button>
                               )}
-                              {puedeAnular && (
+                              {puedeAnularEv && (
                                 <button
                                   onClick={() => {
                                     setMenuAbiertoId(null)
@@ -619,7 +759,6 @@ export default function DetalleEnvioPage() {
                         </div>
                       )}
                     </div>
-
                     {ev.anulado && (
                       <p className="text-xs text-ink-muted mt-0.5 italic">
                         {t.eventos.eventoAnulado(anuladorNombre, ev.motivo_anulacion ?? '')}
@@ -653,172 +792,195 @@ export default function DetalleEnvioPage() {
           envioId={envio.id}
           estadoActual={envio.estado_actual}
           eventoEditar={eventoEditando}
-          onClose={() => {
-            setMostrarPanelEstado(false)
-            setEventoEditando(null)
-          }}
+          onClose={() => { setMostrarPanelEstado(false); setEventoEditando(null) }}
           onGuardado={onPanelGuardado}
         />
       )}
 
-      {/* Modal inactivar */}
+      {/* ── Modal inactivar ──────────────────────────────────────────────────── */}
       {inactivando && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4"
           style={{ background: 'rgba(0,0,0,0.45)' }}
+          onKeyDown={e => {
+            if (e.key === 'Enter' && puedeInactivar) handleInactivar()
+          }}
         >
           <div
             className="bg-surface rounded-xl w-full max-w-md p-6"
             style={{ boxShadow: '0 8px 32px rgba(0,0,0,0.18)' }}
           >
-            <h2 className="text-base font-semibold text-ink mb-2">{t.envios.inactivarTitulo}</h2>
+            <h2 className="text-base font-semibold text-ink mb-1">{t.envios.inactivarTitulo}</h2>
             <p className="text-sm text-ink-muted mb-4">{t.envios.inactivarAdvertencia}</p>
 
-            <label className="block text-sm font-semibold text-ink mb-1.5">
+            <ContextoEnvio
+              guia={guiaFormateada}
+              destinatario={envio.destinatario_nombre}
+              estado={envio.estado_actual}
+            />
+
+            <label className="block text-sm font-semibold text-ink mb-2">
               {t.envios.inactivarMotivoLabel}
             </label>
-            <textarea
-              value={motivoInactivar}
-              onChange={e => setMotivoInactivar(e.target.value)}
-              placeholder={t.envios.inactivarMotivoPlaceholder}
-              rows={3}
-              className="w-full px-3 py-2.5 border border-border rounded-lg text-sm mb-4 resize-none focus:outline-none focus:ring-2 focus:ring-amber-300/40 focus:border-amber-400"
+            <BotonesMotivo
+              motivos={t.envios.motivosInactivar}
+              seleccionado={motivoInactivarRapido}
+              onSeleccionar={setMotivoInactivarRapido}
             />
-
-            <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 mb-4 text-center">
-              <span className="font-mono font-semibold text-amber-700">{guiaFormateada}</span>
-            </div>
-
-            <label className="block text-sm font-semibold text-ink mb-1.5">
-              {t.envios.inactivarConfirmarLabel}
-            </label>
-            <input
-              type="text"
-              value={confirmInput}
-              onChange={e => setConfirmInput(e.target.value)}
-              placeholder={guiaFormateada}
-              autoFocus
-              className="w-full px-3 py-2.5 border border-border rounded-lg text-sm mb-4 focus:outline-none focus:ring-2 focus:ring-amber-300/40 focus:border-amber-400"
-            />
+            {motivoInactivarRapido === 'Otro' && (
+              <textarea
+                value={motivoInactivarTexto}
+                onChange={e => setMotivoInactivarTexto(e.target.value)}
+                placeholder={t.envios.inactivarMotivoPlaceholder}
+                rows={2}
+                autoFocus
+                className="w-full px-3 py-2.5 border border-border rounded-lg text-sm mb-4 resize-none focus:outline-none focus:ring-2 focus:ring-amber-300/40 focus:border-amber-400"
+              />
+            )}
 
             {errorInactivar && (
               <p className="text-xs text-red-600 mb-3">{errorInactivar}</p>
             )}
 
-            <div className="flex gap-2">
+            <div className="flex gap-2 mt-4">
               <button
-                onClick={handleInactivar}
-                disabled={!puedeInactivar || guardandoInactivar}
-                className="flex-1 py-2.5 bg-amber-600 text-white text-sm font-semibold rounded-lg hover:bg-amber-700 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition-colors"
-              >
-                {guardandoInactivar ? t.envios.inactivarCargando : t.envios.inactivarConfirmarBoton}
-              </button>
-              <button
-                onClick={() => {
-                  setInactivando(false)
-                  setMotivoInactivar('')
-                  setConfirmInput('')
-                  setErrorInactivar('')
-                }}
+                ref={cancelInactivarRef}
+                onClick={() => { setInactivando(false); resetInactivar() }}
                 disabled={guardandoInactivar}
                 className="flex-1 py-2.5 border border-border text-ink text-sm rounded-lg hover:bg-canvas cursor-pointer transition-colors"
               >
                 {t.comun.cancelar}
+              </button>
+              <button
+                onClick={handleInactivar}
+                disabled={!puedeInactivar}
+                className="flex-1 py-2.5 bg-amber-600 text-white text-sm font-semibold rounded-lg hover:bg-amber-700 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition-colors"
+              >
+                {guardandoInactivar ? t.envios.inactivarCargando : t.envios.inactivarConfirmarBoton}
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Modal reactivar */}
+      {/* ── Modal reactivar ──────────────────────────────────────────────────── */}
       {reactivando && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4"
           style={{ background: 'rgba(0,0,0,0.45)' }}
+          onKeyDown={e => { if (e.key === 'Enter') handleReactivar() }}
         >
           <div
             className="bg-surface rounded-xl w-full max-w-sm p-6"
             style={{ boxShadow: '0 8px 32px rgba(0,0,0,0.18)' }}
           >
-            <h2 className="text-base font-semibold text-ink mb-2">{t.envios.reactivarTitulo}</h2>
-            <p className="text-sm text-ink-muted mb-5">{t.envios.reactivarConfirmar}</p>
+            <h2 className="text-base font-semibold text-ink mb-1">{t.envios.reactivarTitulo}</h2>
+            <p className="text-sm text-ink-muted mb-4">{t.envios.reactivarConfirmar}</p>
+            <ContextoEnvio
+              guia={guiaFormateada}
+              destinatario={envio.destinatario_nombre}
+              estado={envio.estado_actual}
+            />
             <div className="flex gap-2">
+              <button
+                ref={cancelReactivarRef}
+                onClick={() => setReactivando(false)}
+                className="flex-1 py-2.5 border border-border text-ink text-sm rounded-lg hover:bg-canvas cursor-pointer transition-colors"
+              >
+                {t.comun.cancelar}
+              </button>
               <button
                 onClick={handleReactivar}
                 className="flex-1 py-2.5 bg-navy text-white text-sm font-semibold rounded-lg hover:bg-navy/90 cursor-pointer transition-colors"
               >
                 {t.envios.reactivarBoton}
               </button>
-              <button
-                onClick={() => setReactivando(false)}
-                className="flex-1 py-2.5 border border-border text-ink text-sm rounded-lg hover:bg-canvas cursor-pointer transition-colors"
-              >
-                {t.comun.cancelar}
-              </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Modal anular evento */}
+      {/* ── Modal anular evento ──────────────────────────────────────────────── */}
       {eventoAnulando && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4"
           style={{ background: 'rgba(0,0,0,0.45)' }}
+          onKeyDown={e => { if (e.key === 'Enter' && puedeAnular) handleAnularEvento() }}
         >
           <div
             className="bg-surface rounded-xl w-full max-w-md p-6"
             style={{ boxShadow: '0 8px 32px rgba(0,0,0,0.18)' }}
           >
-            <h2 className="text-base font-semibold text-ink mb-2">{t.eventos.anularTitulo}</h2>
+            <h2 className="text-base font-semibold text-ink mb-1">{t.eventos.anularTitulo}</h2>
             <p className="text-sm text-ink-muted mb-4">{t.eventos.anularAdvertencia}</p>
 
-            <label className="block text-sm font-semibold text-ink mb-1.5">
+            <div className="bg-canvas border border-border rounded-lg px-4 py-3 mb-4 text-sm">
+              <span className="text-ink-muted">Estado a anular: </span>
+              <BadgeEstado estado={eventoAnulando.estado} size="sm" />
+              {eventoAnulando.ubicacion && (
+                <span className="text-ink-muted ml-2">· {eventoAnulando.ubicacion}</span>
+              )}
+            </div>
+
+            <label className="block text-sm font-semibold text-ink mb-2">
               {t.eventos.anularMotivoLabel}
             </label>
-            <textarea
-              value={motivoAnulacion}
-              onChange={e => setMotivoAnulacion(e.target.value)}
-              placeholder={t.eventos.anularMotivoPlaceholder}
-              rows={3}
-              autoFocus
-              className="w-full px-3 py-2.5 border border-border rounded-lg text-sm mb-4 resize-none focus:outline-none focus:ring-2 focus:ring-red-300/40 focus:border-red-400"
+            <BotonesMotivo
+              motivos={t.eventos.motivosAnular}
+              seleccionado={motivoAnularRapido}
+              onSeleccionar={setMotivoAnularRapido}
             />
+            {motivoAnularRapido === 'Otro' && (
+              <textarea
+                value={motivoAnularTexto}
+                onChange={e => setMotivoAnularTexto(e.target.value)}
+                placeholder={t.eventos.anularMotivoPlaceholder}
+                rows={2}
+                autoFocus
+                className="w-full px-3 py-2.5 border border-border rounded-lg text-sm mb-4 resize-none focus:outline-none focus:ring-2 focus:ring-red-300/40 focus:border-red-400"
+              />
+            )}
 
             {errorAnular && (
               <p className="text-xs text-red-600 mb-3">{errorAnular}</p>
             )}
 
-            <div className="flex gap-2">
+            <div className="flex gap-2 mt-4">
               <button
-                onClick={handleAnularEvento}
-                disabled={!motivoAnulacion.trim() || guardandoAnular}
-                className="flex-1 py-2.5 bg-red-600 text-white text-sm font-semibold rounded-lg hover:bg-red-700 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition-colors"
-              >
-                {guardandoAnular ? t.eventos.anularCargando : t.eventos.anularBoton}
-              </button>
-              <button
-                onClick={() => {
-                  setEventoAnulando(null)
-                  setMotivoAnulacion('')
-                  setErrorAnular('')
-                }}
+                ref={cancelAnularRef}
+                onClick={() => { setEventoAnulando(null); resetAnular() }}
                 disabled={guardandoAnular}
                 className="flex-1 py-2.5 border border-border text-ink text-sm rounded-lg hover:bg-canvas cursor-pointer transition-colors"
               >
                 {t.comun.cancelar}
+              </button>
+              <button
+                onClick={handleAnularEvento}
+                disabled={!puedeAnular}
+                className="flex-1 py-2.5 bg-red-600 text-white text-sm font-semibold rounded-lg hover:bg-red-700 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition-colors"
+              >
+                {guardandoAnular ? t.eventos.anularCargando : t.eventos.anularBoton}
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Toast */}
-      {toastMsg && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-ink text-white text-sm font-medium px-5 py-3 rounded-xl pointer-events-none"
+      {/* ── Toast interactivo ────────────────────────────────────────────────── */}
+      {toastDato && (
+        <div
+          className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 bg-ink text-white text-sm font-medium px-5 py-3 rounded-xl"
           style={{ boxShadow: '0 4px 16px rgba(0,0,0,0.2)' }}
         >
-          {toastMsg}
+          <span>{toastDato.msg}</span>
+          {toastDato.action && (
+            <button
+              onClick={toastDato.action.fn}
+              className="text-white underline font-semibold hover:no-underline cursor-pointer"
+            >
+              {toastDato.action.label}
+            </button>
+          )}
         </div>
       )}
     </div>

@@ -6,19 +6,65 @@ export const t = {
 
   rastreo: {
     titulo: 'Rastrea tu envío',
-    placeholder: 'Ej. NXP-AAAAAAA',
-    botonRastrear: 'Rastrear',
-    guiaInvalida: 'Guía inválida, revisa el número',
-    noEncontrado: 'No encontramos un envío con esa guía',
+    descripcion: 'Ingresa tu número de guía para ver el estado de tu envío en tiempo real.',
+    placeholder: 'NXP-XXXXXXX',
+    botonRastrear: 'Rastrear envío',
+    guiaInvalida: 'Revisa el número de guía, parece tener un error de digitación.',
+    noEncontrado: 'No encontramos esa guía.',
+    noEncontradoDetalle: 'Verifica el número o contacta a Nexpak.',
     estadoActual: 'Estado actual',
     fechaEstimada: 'Entrega estimada',
     origen: 'Origen',
     destino: 'Destino',
-    destinatario: 'Destinatario',
-    servicio: 'Tipo de servicio',
+    destinatario: 'Para',
+    servicio: 'Servicio',
     historial: 'Historial de seguimiento',
     servicioEstandar: 'Estándar',
     servicioExpress: 'Express',
+
+    // Inicio - Cómo funciona
+    comoFuncionaTitulo: '¿Cómo funciona?',
+    paso1Titulo: 'Ingresa tu guía',
+    paso1Desc: 'Escribe el número de guía que te dimos al recibir tu paquete.',
+    paso2Titulo: 'Consultamos tu envío',
+    paso2Desc: 'Buscamos el estado actualizado de tu paquete en tiempo real.',
+    paso3Titulo: 'Infórmate al instante',
+    paso3Desc: 'Ve cada etapa del trayecto y recibe actualizaciones automáticas.',
+
+    // Resultado
+    copiarGuia: 'Copiar guía',
+    compartir: 'Compartir',
+    guiaCopiada: '¡Guía copiada!',
+    enlaceCopiado: '¡Enlace copiado!',
+    enVivo: 'En vivo',
+    actualizadoHace: (tiempo: string) => `Actualizado ${tiempo}`,
+
+    // Banner excepción
+    bannerExcepcionTitulo: 'Hay una novedad con tu envío',
+    bannerExcepcionTexto:
+      'Nuestro equipo está trabajando para resolver esta situación. No dudes en contactarnos.',
+    contactarNexpak: 'Contactar a Nexpak',
+
+    // Error / no encontrado
+    errorConexion: 'Sin conexión. Verifica tu internet.',
+    reintentar: 'Reintentar',
+    volverBuscar: 'Buscar otra guía',
+
+    // SEO
+    seoTituloInicio: 'Rastreo de envíos · Nexpak',
+    seoDescInicio:
+      'Rastrea tu envío con Nexpak. Ingresa tu número de guía para ver el estado en tiempo real.',
+    seoTituloResultado: (guia: string) => `Guía ${guia} · Nexpak`,
+    seoDescResultado: (guia: string) =>
+      `Consulta el estado actual del envío ${guia} y el historial de seguimiento.`,
+  },
+
+  pie: {
+    contacto: 'Contacto',
+    direccion: '[DIRECCIÓN]',
+    telefono: '[TELÉFONO]',
+    correo: '[CORREO]',
+    derechos: (year: number) => `© ${year} Nexpak. Todos los derechos reservados.`,
   },
 
   auth: {
@@ -46,11 +92,23 @@ export const t = {
 
   dashboard: {
     titulo: 'Resumen',
-    enviosHoy: 'Envíos hoy',
-    enTransito: 'En tránsito',
-    entregados: 'Entregados',
-    novedades: 'Con novedades',
+    enCurso: 'En curso',
+    transitoInternacional: 'En tránsito',
+    enAduana: 'En aduana',
+    conNovedad: 'Con novedad',
+    entregados30d: 'Entregados (30d)',
+    creadosHoy: 'Creados hoy',
+    distribucionEstados: 'Distribución por estado',
+    requierenAtencion: 'Requieren atención',
     ultimosMovimientos: 'Últimos movimientos',
+    motivoExcepcion: 'Excepción',
+    motivoEstancado: (n: number) => `${n} ${n === 1 ? 'día' : 'días'} sin movimiento`,
+    sinDatos: 'No hay datos disponibles aún.',
+    sinAtencion: 'No hay envíos que requieran atención.',
+    sinMovimientos: 'No hay movimientos recientes.',
+    cargandoResumen: 'Cargando resumen…',
+    errorResumen: 'Error al cargar el resumen.',
+    verListado: 'Ver listado',
   },
 
   envios: {
@@ -92,22 +150,33 @@ export const t = {
     detalleVolver: 'Volver al listado',
     detalleTituloEditar: 'Editar envío',
 
+    // Inactivar
     inactivarTitulo: 'Inactivar envío',
     inactivarAdvertencia:
-      'El envío quedará inactivo. No se podrá editar ni actualizar su estado hasta que sea reactivado. El registro no se elimina.',
-    inactivarMotivoLabel: 'Motivo de inactivación',
-    inactivarMotivoPlaceholder: 'Describe el motivo…',
-    inactivarConfirmarLabel: 'Escribe la guía para confirmar',
+      'El envío quedará inactivo y no podrá editarse ni actualizarse hasta ser reactivado. El registro no se elimina.',
+    inactivarMotivoLabel: 'Motivo',
+    inactivarMotivoPlaceholder: 'Describe el motivo de inactivación…',
     inactivarConfirmarBoton: 'Inactivar envío',
     inactivarCargando: 'Inactivando…',
+    motivosInactivar: [
+      'Registro duplicado',
+      'Error de digitación',
+      'Cancelado por el cliente',
+      'Envío de prueba',
+      'Otro',
+    ],
+    toastInactivado: 'Envío inactivado',
+    toastDeshacer: 'Deshacer',
+    toastReactivado: 'Envío reactivado',
 
+    // Reactivar
     reactivarTitulo: 'Reactivar envío',
-    reactivarConfirmar: '¿Estás seguro de que quieres reactivar este envío?',
+    reactivarConfirmar: '¿Reactivar este envío? Volverá a ser editable y actualizable.',
     reactivarBoton: 'Reactivar',
     reactivarCargando: 'Reactivando…',
 
     bannnerInactivo: (fecha: string, nombre: string, motivo: string) =>
-      `Envío inactivado el ${fecha} por ${nombre} · Motivo: ${motivo}`,
+      `Inactivado el ${fecha} por ${nombre} · Motivo: ${motivo}`,
 
     filtroActivos: 'Solo activos',
     filtroInactivos: 'Inactivos',
@@ -119,6 +188,11 @@ export const t = {
     borradorDisponible: 'Tienes cambios sin guardar de una edición anterior.',
     borradorRestaurar: 'Restaurar',
     borradorDescartar: 'Descartar',
+
+    // Rótulo
+    imprimirRotulo: 'Imprimir rótulo',
+    imprimirRotulos: 'Imprimir rótulos',
+    generandoRotulo: 'Generando PDF…',
 
     formulario: {
       tituloNuevo: 'Registrar nuevo envío',
@@ -181,24 +255,31 @@ export const t = {
     exitoEdicion: 'Evento actualizado',
     error: 'Error al actualizar el estado',
 
-    // Confirmaciones
+    // Confirmaciones en PanelEstado
     confirmarRetroceso: (estadoActual: string, estadoNuevo: string) =>
-      `El estado "${estadoNuevo}" es anterior al estado actual "${estadoActual}". ¿Confirmas el retroceso?`,
+      `El estado "${estadoNuevo}" es anterior al actual "${estadoActual}". ¿Confirmas el retroceso?`,
     confirmarEstadoFinal: (estadoActual: string) =>
-      `El envío ya está en estado "${estadoActual}". ¿Quieres agregar otro evento de todas formas?`,
+      `El envío ya está en "${estadoActual}". ¿Agregar otro evento de todas formas?`,
     confirmarEntregado: '¿Confirmas que el paquete fue entregado al destinatario?',
 
     // Anulación
     anularTitulo: 'Anular evento',
-    anularAdvertencia: 'El evento quedará anulado y no se mostrará al cliente. Esta acción no se puede deshacer.',
-    anularMotivoLabel: 'Motivo de anulación',
-    anularMotivoPlaceholder: 'Describe el motivo…',
+    anularAdvertencia:
+      'El evento quedará anulado y no se mostrará al cliente.',
+    anularMotivoLabel: 'Motivo',
+    anularMotivoPlaceholder: 'Describe el motivo de anulación…',
     anularBoton: 'Anular evento',
     anularCargando: 'Anulando…',
+    motivosAnular: [
+      'Estado registrado por error',
+      'Fecha incorrecta',
+      'Envío equivocado',
+      'Otro',
+    ],
 
     // Historial
     eventoAnulado: (nombre: string, motivo: string) =>
-      `Anulado por ${nombre} · Motivo: ${motivo}`,
+      `Anulado por ${nombre} · ${motivo}`,
     eventoEditado: 'editado',
     menuEditar: 'Editar',
     menuAnular: 'Anular',
@@ -221,8 +302,10 @@ export const t = {
       en_reparto: 'Tu paquete está en camino para ser entregado hoy.',
       entregado: 'Tu paquete fue entregado con éxito. ¡Gracias por elegirnos!',
       novedad: 'Tu envío presenta una novedad. Nos comunicaremos contigo a la brevedad.',
-      retenido_aduana: 'Tu paquete está retenido en aduana. Te contactaremos con más información.',
-      intento_fallido: 'Se realizó un intento de entrega sin éxito. Coordinaremos una nueva fecha.',
+      retenido_aduana:
+        'Tu paquete está retenido en aduana. Te contactaremos con más información.',
+      intento_fallido:
+        'Se realizó un intento de entrega sin éxito. Coordinaremos una nueva fecha.',
       devuelto: 'Tu paquete fue devuelto al remitente de origen.',
     } as Record<string, string>,
   },
