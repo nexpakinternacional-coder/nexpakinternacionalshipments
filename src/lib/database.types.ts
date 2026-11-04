@@ -184,6 +184,8 @@ export type Database = {
           anulado_por: string | null
           creado_por: string | null
           created_at: string
+          editado_en: string | null
+          editado_por: string | null
           envio_id: string
           estado: Database["public"]["Enums"]["estado_envio"]
           id: string
@@ -199,6 +201,8 @@ export type Database = {
           anulado_por?: string | null
           creado_por?: string | null
           created_at?: string
+          editado_en?: string | null
+          editado_por?: string | null
           envio_id: string
           estado: Database["public"]["Enums"]["estado_envio"]
           id?: string
@@ -214,6 +218,8 @@ export type Database = {
           anulado_por?: string | null
           creado_por?: string | null
           created_at?: string
+          editado_en?: string | null
+          editado_por?: string | null
           envio_id?: string
           estado?: Database["public"]["Enums"]["estado_envio"]
           id?: string
@@ -286,6 +292,7 @@ export type Database = {
         }
         Returns: Json
       }
+      resumen_dashboard: { Args: never; Returns: Json }
     }
     Enums: {
       estado_envio:

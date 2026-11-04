@@ -15,10 +15,7 @@ import PanelEstado from '../eventos/PanelEstado'
 import { t } from '../../textos/es'
 
 type Envio = Tables<'envios'>
-type Evento = Tables<'eventos_envio'> & {
-  editado_por?: string | null
-  editado_en?: string | null
-}
+type Evento = Tables<'eventos_envio'>
 
 interface ToastDato {
   msg: string
@@ -258,7 +255,7 @@ export default function DetalleEnvioPage() {
       envioData.inactivado_por,
       ...(eventosData ?? []).map(e => e.creado_por),
       ...(eventosData ?? []).map(e => e.anulado_por),
-      ...(eventosData ?? []).map(e => (e as Evento).editado_por ?? null),
+      ...(eventosData ?? []).map(e => e.editado_por ?? null),
     ]
     const uniqueIds = [...new Set(allIds.filter((x): x is string => x !== null && x !== undefined))]
     if (uniqueIds.length > 0) {
