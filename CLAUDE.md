@@ -119,6 +119,8 @@ src/
     auth/         login de admins
     envios/       listado, crear, detalle y edición
     eventos/      cambio de estado e historial
+    configuracion/ página /admin/configuracion (Fase R3-P4)
+  hooks/          useConfiguracionSitio.ts — hook + provider para datos del sitio (cargados de DB)
   layouts/        PublicLayout, AdminLayout
   routes/         definición de rutas
 supabase/
@@ -135,6 +137,7 @@ supabase/
 - `/admin/envios`: listado con búsqueda y filtros
 - `/admin/envios/nuevo`
 - `/admin/envios/:id`: detalle, cambio de estado e historial
+- `/admin/configuracion`: edición de datos del negocio (solo admin)
 
 Las rutas `/admin/*` están protegidas: sin sesión, redirigen al login.
 
@@ -186,6 +189,7 @@ Marca cada fase con [x] cuando esté terminada.
 - [x] **Fase D1: Logo e identidad de marca.** Componente `<Logo />`, archivos en `src/assets/marca/`, favicons reales, `manifest.webmanifest`, Open Graph con `og-image.png`, hoja de marca en `/dev/marca` (solo DEV), y sección Marca en CLAUDE.md.
 - [x] **Fase R1: Mapa interactivo y ubicaciones.** Coordenadas en `envios` y `eventos_envio`; tabla `ubicaciones`; componente `MapaEnvio` (MapLibre GL JS + OpenFreeMap); `SelectorUbicacion` para el admin (chips de frecuentes, Nominatim, pin arrastrable); mapa en rastreo público con actualización en vivo.
 - [x] **Fase R2: Rediseño vista pública.** Home completo (header, hero con buscador, accesos rápidos, rutas, cómo funciona, servicios, contacto, pie) y página de rastreo rediseñada (bloque superior navy, barra de progreso segmentada, historial con evento actual en naranja, botón WhatsApp). Tipografía Archivo añadida. Nuevos tokens de color. `src/config/empresa.ts` con datos configurables.
+- [x] **Fase R3: Rediseño panel admin.** AdminLayout con sidebar agrupado (OPERACIÓN + CONTROL), barra superior con buscador global (Ctrl+K), DashboardPage con gráfico de etapas + KPIs + tabla de atención + feed en vivo + barras 14 días. Lenguaje visual unificado (border-border-subtle, rounded-2xl, font-display, font-mono). PanelEstado rediseñado con estado sugerido + grilla 3 columnas. Tabla `configuracion_sitio` + RPC `configuracion_publica()` + hook `useConfiguracionSitio` + página `/admin/configuracion`. Vista pública consume config dinámica; "nunca mostrar corchetes" implementado.
 - [ ] **Fase 7: Despliegue.** Cloudflare Pages, dominio, URLs de Auth, keep-alive y respaldo.
 - [ ] **Fase 8: Extras.** Rótulo imprimible en PDF con QR, notificaciones por correo, inglés y resumen en el dashboard.
 
@@ -257,19 +261,18 @@ Viewboxes: isotipo `0 0 80 68`, logo horizontal `0 0 365.88 68`. El componente `
 
 ## Datos que el cliente debe completar antes de publicar
 
-El archivo `src/config/empresa.ts` centraliza todos los datos de negocio con valores entre corchetes. Reemplazarlos antes del despliegue:
+Desde la **Fase R3**, los datos de negocio se editan en **Panel admin → Configuración del sitio** (`/admin/configuracion`). La tabla `configuracion_sitio` en Supabase es la fuente de verdad; `src/config/empresa.ts` conserva valores de respaldo solo para cuando la base de datos no está disponible.
 
-| Campo | Descripción |
+> **No editar `empresa.ts` para publicar.** Usar el panel admin.
+
+| Campo | Dónde editarlo |
 |---|---|
-| `whatsapp` | Número en formato internacional sin espacios (ej. `15551234567`) |
-| `correo` | Correo de contacto |
-| `telefono` | Teléfono de contacto |
-| `direccion` / `ciudad` | Dirección física de la empresa |
-| `razonSocial` / `nit` | Datos legales para el pie de página |
-| `rutas.usca.estandar / express` | Días de tránsito US⇄CA |
-| `rutas.mxus.estandar / express` | Días de tránsito MX→US |
-| `rutas.estados.estandar / express` | Días de tránsito entre estados |
-| `servicios.estandar.precio` / `express.precio` | Precio desde por libra |
+| WhatsApp, teléfono, correo, dirección, ciudad, horario | Panel → Configuración → Contacto |
+| Moneda, unidad de peso, precio estándar/express | Panel → Configuración → Precios |
+| Días de tránsito por corredor (US⇄CA, MX→US, entre estados) | Panel → Configuración → Tiempos por ruta |
+| Razón social y NIT | Panel → Configuración → Datos legales |
+
+**Regla "nunca mostrar corchetes":** si un campo está vacío en DB, la vista pública lo omite o muestra un texto de respaldo neutral (ej. precio vacío → "Cotiza tu envío"; WhatsApp vacío → botones ocultos; teléfono/correo/dirección vacíos → se ocultan del pie).
 
 ## Decisiones tomadas
 

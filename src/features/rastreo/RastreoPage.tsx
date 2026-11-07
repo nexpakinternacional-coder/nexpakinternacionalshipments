@@ -20,7 +20,7 @@ import { t } from '../../textos/es'
 import { useRastreo, type DatoRastreo } from './useRastreo'
 import MapaEnvio, { type DatosMapa } from '../../components/MapaEnvio'
 import Logo from '../../components/Logo'
-import { urlWhatsApp, mensajeWhatsAppGuia } from '../../config/empresa'
+import { useConfiguracionSitio, urlWhatsAppConfig } from '../../hooks/useConfiguracionSitio'
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -219,7 +219,7 @@ function SeccionSuperior({
 
 // ── Banner excepción ──────────────────────────────────────────────────────────
 
-function BannerExcepcion() {
+function BannerExcepcion({ correo }: { correo: string }) {
   return (
     <div className="mx-4 mt-4 bg-amber-50 border border-amber-200 rounded-2xl p-4 flex gap-3">
       <AlertTriangle size={20} className="text-amber-600 flex-shrink-0 mt-0.5" strokeWidth={2} />
@@ -228,12 +228,14 @@ function BannerExcepcion() {
           {t.rastreo.bannerExcepcionTitulo}
         </p>
         <p className="text-sm text-amber-700">{t.rastreo.bannerExcepcionTexto}</p>
-        <a
-          href={`mailto:${t.pie.correo}`}
-          className="inline-block mt-2 text-xs font-semibold text-amber-800 underline hover:no-underline"
-        >
-          {t.rastreo.contactarNexpak}
-        </a>
+        {correo && (
+          <a
+            href={`mailto:${correo}`}
+            className="inline-block mt-2 text-xs font-semibold text-amber-800 underline hover:no-underline"
+          >
+            {t.rastreo.contactarNexpak}
+          </a>
+        )}
       </div>
     </div>
   )
@@ -419,6 +421,7 @@ function LayoutRastreo({ children }: { children: React.ReactNode }) {
 export default function RastreoPage() {
   const { guia: guiaParam = '' } = useParams<{ guia: string }>()
   const { datos, estadoHook, enVivo, animando, buscar } = useRastreo(guiaParam)
+  const { config } = useConfiguracionSitio()
 
   // SEO dinámico
   useEffect(() => {
@@ -483,7 +486,7 @@ export default function RastreoPage() {
       <SeccionSuperior datos={datos} enVivo={enVivo} animando={animando} />
 
       {/* Banner excepción justo debajo del bloque superior */}
-      {esExcepcion && <BannerExcepcion />}
+      {esExcepcion && <BannerExcepcion correo={config.correo} />}
 
       {/* Mapa */}
       <MapaEnvio datos={datosMapa(datos)} className="mx-4 mt-4" />
@@ -494,16 +497,18 @@ export default function RastreoPage() {
       {/* Historial */}
       <Historial eventos={datos.eventos} />
 
-      {/* Botón WhatsApp */}
-      <a
-        href={urlWhatsApp(mensajeWhatsAppGuia(formatearGuia(datos.guia)))}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="mx-4 mt-4 min-h-[52px] flex items-center justify-center gap-2.5 rounded-xl bg-accent-strong text-white font-semibold text-base hover:bg-accent transition-colors cursor-pointer no-underline"
-      >
-        <MessageCircle size={18} strokeWidth={1.8} aria-hidden="true" />
-        ¿Dudas con tu envío? Escríbenos
-      </a>
+      {/* Botón WhatsApp — solo si hay número configurado */}
+      {config.whatsapp && (
+        <a
+          href={urlWhatsAppConfig(config, `Hola, tengo una pregunta sobre mi envío con guía ${formatearGuia(datos.guia)}.`)}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mx-4 mt-4 min-h-[52px] flex items-center justify-center gap-2.5 rounded-xl bg-accent-strong text-white font-semibold text-base hover:bg-accent transition-colors cursor-pointer no-underline"
+        >
+          <MessageCircle size={18} strokeWidth={1.8} aria-hidden="true" />
+          ¿Dudas con tu envío? Escríbenos
+        </a>
+      )}
     </LayoutRastreo>
   )
 }

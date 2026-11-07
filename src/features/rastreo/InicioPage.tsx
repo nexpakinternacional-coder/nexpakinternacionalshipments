@@ -11,7 +11,11 @@ import {
 import { normalizarGuia, validarGuia } from '../../lib/guia'
 import { t } from '../../textos/es'
 import Logo from '../../components/Logo'
-import { empresa, urlWhatsApp } from '../../config/empresa'
+import {
+  useConfiguracionSitio,
+  formatearRangoDias,
+  urlWhatsAppConfig,
+} from '../../hooks/useConfiguracionSitio'
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -23,7 +27,7 @@ function formatarInputGuia(raw: string): string {
 
 // ── Encabezado ────────────────────────────────────────────────────────────────
 
-function Encabezado() {
+function Encabezado({ urlWa }: { urlWa: string | null }) {
   const [menuAbierto, setMenuAbierto] = useState(false)
 
   const enlaces = [
@@ -55,16 +59,18 @@ function Encabezado() {
           ))}
         </nav>
 
-        {/* Botón Escríbenos */}
-        <a
-          href={urlWhatsApp()}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="hidden md:inline-flex items-center gap-2 min-h-[44px] px-[18px] rounded-[10px] bg-white text-navy font-semibold text-sm hover:bg-canvas transition-colors flex-shrink-0 cursor-pointer"
-        >
-          <MessageCircle size={17} strokeWidth={1.8} aria-hidden="true" />
-          Escríbenos
-        </a>
+        {/* Botón Escríbenos — solo si hay WhatsApp */}
+        {urlWa && (
+          <a
+            href={urlWa}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hidden md:inline-flex items-center gap-2 min-h-[44px] px-[18px] rounded-[10px] bg-white text-navy font-semibold text-sm hover:bg-canvas transition-colors flex-shrink-0 cursor-pointer"
+          >
+            <MessageCircle size={17} strokeWidth={1.8} aria-hidden="true" />
+            Escríbenos
+          </a>
+        )}
 
         {/* Hamburger móvil */}
         <button
@@ -92,16 +98,18 @@ function Encabezado() {
                 {label}
               </a>
             ))}
-            <a
-              href={urlWhatsApp()}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={() => setMenuAbierto(false)}
-              className="inline-flex items-center gap-2 mt-3 min-h-[44px] px-5 rounded-[10px] bg-white text-navy font-semibold text-sm self-start cursor-pointer"
-            >
-              <MessageCircle size={17} strokeWidth={1.8} aria-hidden="true" />
-              Escríbenos
-            </a>
+            {urlWa && (
+              <a
+                href={urlWa}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => setMenuAbierto(false)}
+                className="inline-flex items-center gap-2 mt-3 min-h-[44px] px-5 rounded-[10px] bg-white text-navy font-semibold text-sm self-start cursor-pointer"
+              >
+                <MessageCircle size={17} strokeWidth={1.8} aria-hidden="true" />
+                Escríbenos
+              </a>
+            )}
           </nav>
         </div>
       )}
@@ -328,50 +336,44 @@ function Hero() {
 
 // ── Accesos rápidos ───────────────────────────────────────────────────────────
 
-function AccesosRapidos() {
+function AccesosRapidos({ urlWa }: { urlWa: string | null }) {
+  const accesos = [
+    {
+      href: '#rastrear',
+      icono: <Search size={22} strokeWidth={1.8} aria-hidden="true" />,
+      iconoBg: 'bg-icon-bg text-navy',
+      titulo: 'Sigue tu envío',
+      desc: 'Estado e historial con tu número de guía.',
+    },
+    {
+      href: urlWa ? `${urlWa}?text=${encodeURIComponent('Hola, quiero cotizar un envío.')}` : '#contacto',
+      externo: !!urlWa,
+      icono: <FileText size={22} strokeWidth={1.8} aria-hidden="true" />,
+      iconoBg: 'bg-accent-soft text-accent-strong',
+      titulo: 'Cotiza tu envío',
+      desc: 'Precio según peso, origen y servicio.',
+    },
+    ...(urlWa ? [{
+      href: urlWa,
+      externo: true,
+      icono: <MessageCircle size={22} strokeWidth={1.8} aria-hidden="true" />,
+      iconoBg: 'bg-[#E7F7EF] text-[#047857]',
+      titulo: 'WhatsApp',
+      desc: 'Resolvemos tus dudas en minutos.',
+    }] : []),
+    {
+      href: '#rutas',
+      icono: <Globe size={22} strokeWidth={1.8} aria-hidden="true" />,
+      iconoBg: 'bg-icon-bg text-navy',
+      titulo: 'Rutas y tiempos',
+      desc: 'Corredores que operamos y tiempos.',
+    },
+  ]
+
   return (
     <section aria-label="Accesos rápidos" className="max-w-[1240px] mx-auto px-6 pt-10 pb-6">
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {[
-          {
-            href: '#rastrear',
-            icono: (
-              <Search size={22} strokeWidth={1.8} aria-hidden="true" />
-            ),
-            iconoBg: 'bg-icon-bg text-navy',
-            titulo: 'Sigue tu envío',
-            desc: 'Estado e historial con tu número de guía.',
-          },
-          {
-            href: urlWhatsApp('Hola, quiero cotizar un envío.'),
-            externo: true,
-            icono: (
-              <FileText size={22} strokeWidth={1.8} aria-hidden="true" />
-            ),
-            iconoBg: 'bg-accent-soft text-accent-strong',
-            titulo: 'Cotiza tu envío',
-            desc: 'Precio según peso, origen y servicio.',
-          },
-          {
-            href: urlWhatsApp(),
-            externo: true,
-            icono: (
-              <MessageCircle size={22} strokeWidth={1.8} aria-hidden="true" />
-            ),
-            iconoBg: 'bg-[#E7F7EF] text-[#047857]',
-            titulo: 'WhatsApp',
-            desc: 'Resolvemos tus dudas en minutos.',
-          },
-          {
-            href: '#rutas',
-            icono: (
-              <Globe size={22} strokeWidth={1.8} aria-hidden="true" />
-            ),
-            iconoBg: 'bg-icon-bg text-navy',
-            titulo: 'Rutas y tiempos',
-            desc: 'Corredores que operamos y tiempos.',
-          },
-        ].map(({ href, externo, icono, iconoBg, titulo, desc }) => (
+        {accesos.map(({ href, externo, icono, iconoBg, titulo, desc }) => (
           <a
             key={titulo}
             href={href}
@@ -395,7 +397,23 @@ function AccesosRapidos() {
 
 // ── Rutas ─────────────────────────────────────────────────────────────────────
 
-function Rutas() {
+function TiemposRuta({
+  estandar,
+  express,
+}: {
+  estandar: string | null
+  express: string | null
+}) {
+  if (!estandar && !express) return null
+  return (
+    <div className="flex justify-between text-sm text-ink-muted border-t border-[#E3E8F0] pt-3.5">
+      {estandar && <span>Estándar {estandar} días</span>}
+      {express && <span>Express {express} días</span>}
+    </div>
+  )
+}
+
+function Rutas({ tiempos }: { tiempos: import('../../hooks/useConfiguracionSitio').TiemposCorredores }) {
   return (
     <section id="rutas" className="max-w-[1240px] mx-auto px-6 pt-28 pb-10">
       <div className="flex flex-wrap justify-between items-end gap-6 mb-10">
@@ -420,10 +438,10 @@ function Rutas() {
             <span className="text-[13px] text-ink-muted">Transfronterizo</span>
           </div>
           <strong className="font-display text-2xl font-bold leading-tight">Estados Unidos y Canadá</strong>
-          <div className="flex justify-between text-sm text-ink-muted border-t border-[#E3E8F0] pt-3.5">
-            <span>Estándar {empresa.rutas.usca.estandar} días</span>
-            <span>Express {empresa.rutas.usca.express} días</span>
-          </div>
+          <TiemposRuta
+            estandar={formatearRangoDias(tiempos.usca, 'estandar')}
+            express={formatearRangoDias(tiempos.usca, 'express')}
+          />
         </div>
         {/* MX → US */}
         <div className="bg-surface border border-border-subtle rounded-2xl p-[26px] flex flex-col gap-[18px]">
@@ -432,10 +450,10 @@ function Rutas() {
             <span className="text-[13px] text-ink-muted">Norteamérica</span>
           </div>
           <strong className="font-display text-2xl font-bold leading-tight">México y Estados Unidos</strong>
-          <div className="flex justify-between text-sm text-ink-muted border-t border-[#E3E8F0] pt-3.5">
-            <span>Estándar {empresa.rutas.mxus.estandar} días</span>
-            <span>Express {empresa.rutas.mxus.express} días</span>
-          </div>
+          <TiemposRuta
+            estandar={formatearRangoDias(tiempos.mxus, 'estandar')}
+            express={formatearRangoDias(tiempos.mxus, 'express')}
+          />
         </div>
         {/* TX → FL */}
         <div className="bg-surface border border-border-subtle rounded-2xl p-[26px] flex flex-col gap-[18px]">
@@ -444,10 +462,10 @@ function Rutas() {
             <span className="text-[13px] text-ink-muted">Nacional</span>
           </div>
           <strong className="font-display text-2xl font-bold leading-tight">Entre estados</strong>
-          <div className="flex justify-between text-sm text-ink-muted border-t border-[#E3E8F0] pt-3.5">
-            <span>Estándar {empresa.rutas.estados.estandar} días</span>
-            <span>Express {empresa.rutas.estados.express} días</span>
-          </div>
+          <TiemposRuta
+            estandar={formatearRangoDias(tiempos.estados, 'estandar')}
+            express={formatearRangoDias(tiempos.estados, 'express')}
+          />
         </div>
         {/* ¿Otra ruta? */}
         <div className="bg-navy text-white rounded-2xl p-[26px] flex flex-col gap-[18px]">
@@ -530,7 +548,29 @@ function ComoFunciona() {
 
 // ── Servicios ─────────────────────────────────────────────────────────────────
 
-function Servicios() {
+function Servicios({
+  precioEstandar,
+  precioExpress,
+  moneda,
+  unidadPeso,
+  urlWa,
+}: {
+  precioEstandar: number | null
+  precioExpress: number | null
+  moneda: string
+  unidadPeso: string
+  urlWa: string | null
+}) {
+  function labelPrecio(precio: number | null) {
+    if (precio == null) return 'Cotiza tu envío'
+    return `Desde ${moneda} ${precio.toFixed(2)} / ${unidadPeso}`
+  }
+
+  function hrefCotizar(tipo: string) {
+    if (!urlWa) return '#contacto'
+    return `${urlWa}?text=${encodeURIComponent(`Hola, quiero cotizar el servicio ${tipo}.`)}`
+  }
+
   return (
     <section id="servicios" className="bg-surface border-t border-b border-border-subtle">
       <div className="max-w-[1240px] mx-auto px-6 py-24 flex flex-col gap-10">
@@ -548,7 +588,7 @@ function Servicios() {
           <div className="flex-1 basis-[380px] min-w-0 border border-border-subtle rounded-[20px] p-8 flex flex-col gap-5">
             <span className="font-mono text-[13px] tracking-[0.12em] text-ink-muted">ESTÁNDAR</span>
             <strong className="font-display font-extrabold text-[34px] text-navy leading-tight">
-              Desde {empresa.servicios.estandar.precio} / lb
+              {labelPrecio(precioEstandar)}
             </strong>
             <ul className="m-0 p-0 list-none flex flex-col gap-2.5 text-base text-[#374151]">
               <li>Ideal para compras sin afán</li>
@@ -556,9 +596,9 @@ function Servicios() {
               <li>Consolidación de varios paquetes</li>
             </ul>
             <a
-              href={urlWhatsApp('Hola, quiero cotizar el servicio estándar.')}
-              target="_blank"
-              rel="noopener noreferrer"
+              href={hrefCotizar('estándar')}
+              target={urlWa ? '_blank' : undefined}
+              rel={urlWa ? 'noopener noreferrer' : undefined}
               className="self-start inline-flex items-center min-h-[48px] px-[22px] rounded-[10px] border border-navy text-navy font-semibold hover:bg-navy hover:text-white transition-colors cursor-pointer no-underline"
             >
               Cotizar estándar
@@ -571,7 +611,7 @@ function Servicios() {
               <span className="text-xs font-semibold bg-accent text-white px-2.5 py-1 rounded-full">Más rápido</span>
             </div>
             <strong className="font-display font-extrabold text-[34px] leading-tight">
-              Desde {empresa.servicios.express.precio} / lb
+              {labelPrecio(precioExpress)}
             </strong>
             <ul className="m-0 p-0 list-none flex flex-col gap-2.5 text-base text-[#DCE3EE]">
               <li>Prioridad en vuelo y en aduana</li>
@@ -579,9 +619,9 @@ function Servicios() {
               <li>Entrega prioritaria en destino</li>
             </ul>
             <a
-              href={urlWhatsApp('Hola, quiero cotizar el servicio express.')}
-              target="_blank"
-              rel="noopener noreferrer"
+              href={hrefCotizar('express')}
+              target={urlWa ? '_blank' : undefined}
+              rel={urlWa ? 'noopener noreferrer' : undefined}
               className="self-start inline-flex items-center min-h-[48px] px-[22px] rounded-[10px] bg-accent-strong text-white font-semibold hover:bg-accent transition-colors cursor-pointer no-underline"
             >
               Cotizar express
@@ -595,7 +635,13 @@ function Servicios() {
 
 // ── Contacto ──────────────────────────────────────────────────────────────────
 
-function Contacto() {
+function Contacto({
+  urlWa,
+  telefono,
+}: {
+  urlWa: string | null
+  telefono: string
+}) {
   return (
     <section id="contacto" className="max-w-[1240px] mx-auto px-6 py-24">
       <div className="bg-accent rounded-3xl px-12 py-12 flex flex-wrap items-center justify-between gap-7">
@@ -610,15 +656,17 @@ function Contacto() {
             Escríbenos y te respondemos en horario de oficina.
           </p>
         </div>
-        <a
-          href={urlWhatsApp()}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-2.5 min-h-[56px] px-[26px] rounded-xl bg-navy text-white text-[17px] font-semibold hover:bg-navy/90 transition-colors cursor-pointer no-underline"
-        >
-          <MessageCircle size={20} strokeWidth={1.8} aria-hidden="true" />
-          WhatsApp {empresa.telefono}
-        </a>
+        {urlWa && (
+          <a
+            href={urlWa}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2.5 min-h-[56px] px-[26px] rounded-xl bg-navy text-white text-[17px] font-semibold hover:bg-navy/90 transition-colors cursor-pointer no-underline"
+          >
+            <MessageCircle size={20} strokeWidth={1.8} aria-hidden="true" />
+            WhatsApp{telefono ? ` ${telefono}` : ''}
+          </a>
+        )}
       </div>
     </section>
   )
@@ -626,7 +674,28 @@ function Contacto() {
 
 // ── Pie de página ─────────────────────────────────────────────────────────────
 
-function Pie() {
+function Pie({
+  direccion,
+  ciudad,
+  correo,
+  telefono,
+  razonSocial,
+  nit,
+}: {
+  direccion: string
+  ciudad: string
+  correo: string
+  telefono: string
+  razonSocial: string
+  nit: string
+}) {
+  const ubicacion = [direccion, ciudad].filter(Boolean).join(', ')
+  const tieneContacto = !!(ubicacion || correo || telefono)
+
+  let lineaLegal = `© ${new Date().getFullYear()} Nexpak`
+  if (razonSocial && nit) lineaLegal += ` · ${razonSocial} · NIT ${nit}`
+  else if (razonSocial) lineaLegal += ` · ${razonSocial}`
+
   return (
     <footer className="bg-navy-deep text-[#C9D3E3]">
       <div className="max-w-[1240px] mx-auto px-6 pt-14 pb-8 flex flex-col gap-10">
@@ -640,12 +709,14 @@ function Pie() {
           </div>
           {/* Contacto + legal */}
           <div className="flex flex-wrap gap-14 text-sm">
-            <div className="flex flex-col gap-2.5">
-              <strong className="text-white font-semibold">Contacto</strong>
-              <span>{empresa.direccion}, {empresa.ciudad}</span>
-              <span>{empresa.correo}</span>
-              <span>{empresa.telefono}</span>
-            </div>
+            {tieneContacto && (
+              <div className="flex flex-col gap-2.5">
+                <strong className="text-white font-semibold">Contacto</strong>
+                {ubicacion && <span>{ubicacion}</span>}
+                {correo && <span>{correo}</span>}
+                {telefono && <span>{telefono}</span>}
+              </div>
+            )}
             <div className="flex flex-col gap-2.5">
               <strong className="text-white font-semibold">Legal</strong>
               <a href="#inicio" className="text-[#C9D3E3] hover:text-white transition-colors">Política de datos personales</a>
@@ -655,7 +726,7 @@ function Pie() {
           </div>
         </div>
         <div className="border-t border-white/12 pt-5 text-[13px] text-[#94A3B8]">
-          © {new Date().getFullYear()} Nexpak · {empresa.razonSocial} · NIT {empresa.nit}
+          {lineaLegal}
         </div>
       </div>
     </footer>
@@ -665,22 +736,39 @@ function Pie() {
 // ── Componente principal ──────────────────────────────────────────────────────
 
 export default function InicioPage() {
+  const { config } = useConfiguracionSitio()
+
   useEffect(() => {
     document.title = t.rastreo.seoTituloInicio
     document.querySelector('meta[name="description"]')?.setAttribute('content', t.rastreo.seoDescInicio)
     document.querySelector('meta[name="robots"]')?.remove()
   }, [])
 
+  const urlWa = config.whatsapp ? urlWhatsAppConfig(config) : null
+
   return (
     <>
-      <Encabezado />
+      <Encabezado urlWa={urlWa} />
       <Hero />
-      <AccesosRapidos />
-      <Rutas />
+      <AccesosRapidos urlWa={urlWa} />
+      <Rutas tiempos={config.tiempos} />
       <ComoFunciona />
-      <Servicios />
-      <Contacto />
-      <Pie />
+      <Servicios
+        precioEstandar={config.precio_desde_estandar}
+        precioExpress={config.precio_desde_express}
+        moneda={config.moneda}
+        unidadPeso={config.unidad_peso}
+        urlWa={urlWa}
+      />
+      <Contacto urlWa={urlWa} telefono={config.telefono} />
+      <Pie
+        direccion={config.direccion}
+        ciudad={config.ciudad}
+        correo={config.correo}
+        telefono={config.telefono}
+        razonSocial={config.razon_social}
+        nit={config.nit}
+      />
     </>
   )
 }

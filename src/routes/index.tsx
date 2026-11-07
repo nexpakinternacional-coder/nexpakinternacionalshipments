@@ -10,6 +10,7 @@ import DashboardPage from '../features/auth/DashboardPage'
 import EnviosPage from '../features/envios/EnviosPage'
 import NuevoEnvioPage from '../features/envios/NuevoEnvioPage'
 import DetalleEnvioPage from '../features/envios/DetalleEnvioPage'
+import ConfiguracionPage from '../features/configuracion/ConfiguracionPage'
 import MarcaPage from '../features/dev/MarcaPage'
 import MapaPage from '../features/dev/MapaPage'
 
@@ -58,6 +59,7 @@ export const router = createBrowserRouter([
           { path: '/admin/envios', element: <EnviosPage /> },
           { path: '/admin/envios/nuevo', element: <NuevoEnvioPage /> },
           { path: '/admin/envios/:id', element: <DetalleEnvioPage /> },
+          { path: '/admin/configuracion', element: <ConfiguracionPage /> },
         ],
       },
     ],
