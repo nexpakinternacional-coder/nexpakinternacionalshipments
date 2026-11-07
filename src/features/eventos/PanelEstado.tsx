@@ -12,7 +12,7 @@ import {
   siguienteEstadoSugerido,
   type EstadoEnvio,
 } from '../../lib/estados'
-import BadgeEstado from '../../components/BadgeEstado'
+import { formatearGuia } from '../../lib/guia'
 import { t } from '../../textos/es'
 
 type Evento = Tables<'eventos_envio'>
@@ -47,20 +47,37 @@ function leerBorrador(key: string): BorradorPanel | null {
 }
 
 function guardarBorrador(key: string, data: BorradorPanel) {
-  try {
-    sessionStorage.setItem(key, JSON.stringify(data))
-  } catch {}
+  try { sessionStorage.setItem(key, JSON.stringify(data)) } catch {}
 }
 
 function borrarBorrador(key: string) {
-  try {
-    sessionStorage.removeItem(key)
-  } catch {}
+  try { sessionStorage.removeItem(key) } catch {}
+}
+
+// Estados que probablemente aplican según la etapa actual
+function estadosProbables(actual: EstadoEnvio | undefined): EstadoEnvio[] {
+  const mapeo: Partial<Record<EstadoEnvio, EstadoEnvio[]>> = {
+    guia_generada:          ['novedad'],
+    recibido_origen:        ['novedad'],
+    transito_internacional: ['novedad', 'retenido_aduana'],
+    en_aduana:              ['retenido_aduana', 'novedad'],
+    liberado_aduana:        ['novedad'],
+    centro_distribucion:    ['intento_fallido', 'novedad'],
+    en_reparto:             ['intento_fallido', 'novedad'],
+    entregado:              ['devuelto'],
+    retenido_aduana:        ['liberado_aduana', 'devuelto'],
+    intento_fallido:        ['en_reparto', 'devuelto'],
+    novedad:                ['en_reparto', 'devuelto'],
+    devuelto:               ['novedad'],
+  }
+  return mapeo[actual ?? 'guia_generada'] ?? ['novedad', 'retenido_aduana']
 }
 
 export interface PanelEstadoProps {
   envioId?: string
   estadoActual?: EstadoEnvio
+  guia?: string
+  destinatario?: string
   eventoEditar?: Evento | null
   modoMasivo?: boolean
   enviosMasivo?: EnvioParaMasivo[]
@@ -71,6 +88,8 @@ export interface PanelEstadoProps {
 export default function PanelEstado({
   envioId,
   estadoActual,
+  guia,
+  destinatario,
   eventoEditar,
   modoMasivo = false,
   enviosMasivo,
@@ -137,12 +156,11 @@ export default function PanelEstado({
   const [excluirFinales, setExcluirFinales] = useState(true)
   const [cargando, setCargando] = useState(false)
   const [error, setError] = useState('')
+  const [verTodosEstados, setVerTodosEstados] = useState(false)
 
   const prevEstadoRef = useRef(estadoSeleccionado)
   const notaPublicaRef = useRef(notaPublica)
-  useEffect(() => {
-    notaPublicaRef.current = notaPublica
-  }, [notaPublica])
+  useEffect(() => { notaPublicaRef.current = notaPublica }, [notaPublica])
 
   useEffect(() => {
     if (esEdicion || modoMasivo) return
@@ -172,22 +190,14 @@ export default function PanelEstado({
   function handleGuardar() {
     if (confirmsQueue.length === 0) {
       const queue = buildQueue()
-      if (queue.length > 0) {
-        setConfirmsQueue(queue)
-        return
-      }
+      if (queue.length > 0) { setConfirmsQueue(queue); return }
     }
     guardar()
   }
 
   function handleConfirmar() {
     const remaining = confirmsQueue.slice(1)
-    if (remaining.length > 0) {
-      setConfirmsQueue(remaining)
-    } else {
-      setConfirmsQueue([])
-      guardar()
-    }
+    if (remaining.length > 0) { setConfirmsQueue(remaining) } else { setConfirmsQueue([]); guardar() }
   }
 
   async function guardar() {
@@ -248,8 +258,18 @@ export default function PanelEstado({
     }
   }
 
+  // ── Computed para la selección de estado ─────────────────────────────────────
   const sugerido =
     !modoMasivo && !esEdicion && estadoActual ? siguienteEstadoSugerido(estadoActual) : null
+
+  const estadosRapidos: EstadoEnvio[] = !modoMasivo && !esEdicion
+    ? sugerido
+      ? [sugerido, ...estadosProbables(estadoActual).filter(e => e !== sugerido).slice(0, 2)]
+      : estadosProbables(estadoActual).slice(0, 3)
+    : []
+
+  const todosLosEstados = [...FLUJO_NORMAL, ...ESTADOS_EXCEPCION]
+  const estadosExtendidos = todosLosEstados.filter(e => !estadosRapidos.includes(e))
 
   const confirmTexto = (() => {
     const tipo = confirmsQueue[0]
@@ -282,23 +302,42 @@ export default function PanelEstado({
       <div
         role="dialog"
         aria-modal="true"
-        className="fixed top-0 right-0 bottom-0 z-50 w-full max-w-md bg-surface flex flex-col"
+        aria-label={esEdicion ? t.eventos.editarEvento : t.eventos.actualizarEstado}
+        className="fixed top-0 right-0 bottom-0 z-50 w-full sm:max-w-[480px] bg-surface flex flex-col border-l border-[#DDE3EC]"
         style={{ boxShadow: '-4px 0 24px rgba(0,0,0,0.12)' }}
       >
-        <div className="flex items-center justify-between px-5 py-4 border-b border-border flex-shrink-0">
-          <h2 className="text-base font-semibold text-ink">
-            {esEdicion ? t.eventos.editarEvento : t.eventos.actualizarEstado}
-          </h2>
+        {/* Cabecera */}
+        <div className="flex items-start justify-between px-7 py-5 border-b border-[#E3E8F0] flex-shrink-0">
+          <div className="flex flex-col gap-0.5">
+            <h2 className="font-display text-[22px] font-extrabold text-navy leading-tight">
+              {esEdicion ? t.eventos.editarEvento : t.eventos.actualizarEstado}
+            </h2>
+            {!modoMasivo && guia && destinatario && (
+              <span className="text-sm text-ink-muted">
+                <span className="font-mono font-semibold text-navy">{formatearGuia(guia)}</span>
+                {' · '}
+                {destinatario}
+              </span>
+            )}
+            {modoMasivo && enviosMasivo && (
+              <span className="text-sm text-ink-muted">
+                {enviosMasivo.length} envíos seleccionados
+              </span>
+            )}
+          </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-md text-ink-muted hover:text-ink hover:bg-canvas transition-colors cursor-pointer"
+            className="flex-none w-11 h-11 flex items-center justify-center rounded-[10px] bg-canvas text-navy hover:bg-border-subtle transition-colors cursor-pointer mt-0.5"
             aria-label={t.comun.cerrar}
           >
-            <X size={18} />
+            <X size={18} aria-hidden="true" />
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-5 py-4 space-y-5">
+        {/* Contenido */}
+        <div className="flex-1 overflow-y-auto px-7 py-6 flex flex-col gap-6">
+
+          {/* Cola de confirmaciones */}
           {confirmsQueue.length > 0 && (
             <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
               <p className="text-sm text-amber-800 mb-3">{confirmTexto}</p>
@@ -320,11 +359,12 @@ export default function PanelEstado({
             </div>
           )}
 
+          {/* Aviso de finales en masivo */}
           {modoMasivo && enviosFinalesMasivo.length > 0 && (
             <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
               <p className="text-sm text-amber-800 mb-2">
                 {enviosFinalesMasivo.length}{' '}
-                {enviosFinalesMasivo.length === 1 ? 'envío está' : 'envíos están'} en estado final (entregado/devuelto).
+                {enviosFinalesMasivo.length === 1 ? 'envío está' : 'envíos están'} en estado final.
               </p>
               <label className="flex items-center gap-2 text-sm text-amber-700 cursor-pointer">
                 <input
@@ -338,88 +378,164 @@ export default function PanelEstado({
             </div>
           )}
 
-          {!esEdicion && (
+          {/* ── Selección de estado ─────────────────────────────────────────── */}
+          {esEdicion ? (
             <div>
-              <p className="text-xs font-semibold text-ink-muted uppercase tracking-wide mb-2">
-                {t.eventos.nuevoEstado}
-              </p>
-              {sugerido && (
-                <div className="mb-3">
-                  <p className="text-xs text-ink-muted mb-1.5">{t.eventos.estadoSugerido}</p>
-                  <button
-                    type="button"
-                    onClick={() => setEstadoSeleccionado(sugerido)}
-                    className={`w-full flex items-center gap-2 px-3 py-2.5 rounded-xl border-2 text-left transition-colors cursor-pointer ${
-                      estadoSeleccionado === sugerido
-                        ? 'border-navy bg-navy/5'
-                        : 'border-border hover:border-navy/30'
-                    }`}
-                  >
-                    <BadgeEstado estado={sugerido} size="sm" />
-                    {estadoSeleccionado === sugerido && (
-                      <span className="ml-auto text-xs font-semibold text-navy">✓</span>
-                    )}
-                  </button>
-                </div>
-              )}
-              <p className="text-xs text-ink-muted mb-1.5">{t.eventos.flujoNormal}</p>
-              <div className="space-y-1.5 mb-3">
-                {FLUJO_NORMAL.filter(e => e !== sugerido).map(e => (
+              <p className="text-sm font-semibold text-ink mb-2">{t.rastreo.estadoActual}</p>
+              <div className="flex items-center gap-2 px-3 py-2.5 bg-canvas border border-border-subtle rounded-[10px]">
+                <span
+                  className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${
+                    ESTADOS[estadoSeleccionado]?.colorFondo ?? ''
+                  } ${ESTADOS[estadoSeleccionado]?.colorTexto ?? ''}`}
+                >
+                  {ESTADOS[estadoSeleccionado]?.etiqueta ?? estadoSeleccionado}
+                </span>
+              </div>
+            </div>
+          ) : modoMasivo ? (
+            /* Modo masivo: lista compacta de todos los estados */
+            <div>
+              <p className="text-sm font-semibold text-ink mb-3">{t.eventos.nuevoEstado}</p>
+              <div className="grid grid-cols-1 gap-1.5">
+                {FLUJO_NORMAL.map(e => (
                   <button
                     key={e}
                     type="button"
                     onClick={() => setEstadoSeleccionado(e)}
-                    className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg border text-left transition-colors cursor-pointer ${
+                    className={`flex items-center gap-2 px-3 py-2.5 rounded-[10px] border text-left transition-colors cursor-pointer ${
                       estadoSeleccionado === e
-                        ? 'border-navy bg-navy/5'
-                        : 'border-border hover:border-navy/30'
+                        ? 'border-navy bg-icon-bg'
+                        : 'border-border-subtle hover:border-navy/30 hover:bg-canvas'
                     }`}
                   >
-                    <BadgeEstado estado={e} size="sm" />
+                    <span
+                      className={`w-2 h-2 rounded-full flex-shrink-0 ${
+                        ESTADOS[e]?.colorFondo ?? 'bg-border'
+                      }`}
+                    />
+                    <span className={`text-sm flex-1 ${estadoSeleccionado === e ? 'font-semibold text-navy' : 'text-ink'}`}>
+                      {ESTADOS[e].etiqueta}
+                    </span>
                     {estadoSeleccionado === e && (
-                      <span className="ml-auto text-xs font-semibold text-navy">✓</span>
+                      <span className="text-xs font-semibold text-navy ml-auto">✓</span>
                     )}
                   </button>
                 ))}
-              </div>
-              <p className="text-xs text-ink-muted mb-1.5">{t.eventos.excepciones}</p>
-              <div className="space-y-1.5">
+                <div className="border-t border-border-subtle my-1" />
                 {ESTADOS_EXCEPCION.map(e => (
                   <button
                     key={e}
                     type="button"
                     onClick={() => setEstadoSeleccionado(e)}
-                    className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg border text-left transition-colors cursor-pointer ${
+                    className={`flex items-center gap-2 px-3 py-2.5 rounded-[10px] border text-left transition-colors cursor-pointer ${
                       estadoSeleccionado === e
-                        ? 'border-navy bg-navy/5'
-                        : 'border-border hover:border-navy/30'
+                        ? 'border-navy bg-icon-bg'
+                        : 'border-border-subtle hover:border-navy/30 hover:bg-canvas'
                     }`}
                   >
-                    <BadgeEstado estado={e} size="sm" />
+                    <span
+                      className={`w-2 h-2 rounded-full flex-shrink-0 ${
+                        ESTADOS[e]?.colorFondo ?? 'bg-border'
+                      }`}
+                    />
+                    <span className={`text-sm flex-1 ${estadoSeleccionado === e ? 'font-semibold text-navy' : 'text-ink'}`}>
+                      {ESTADOS[e].etiqueta}
+                    </span>
                     {estadoSeleccionado === e && (
-                      <span className="ml-auto text-xs font-semibold text-navy">✓</span>
+                      <span className="text-xs font-semibold text-navy ml-auto">✓</span>
                     )}
                   </button>
                 ))}
               </div>
             </div>
-          )}
-
-          {esEdicion && (
+          ) : (
+            /* Modo normal: 3 botones rápidos + toggle ver todos */
             <div>
-              <p className="text-xs font-semibold text-ink-muted uppercase tracking-wide mb-2">
-                {t.rastreo.estadoActual}
-              </p>
-              <BadgeEstado estado={estadoSeleccionado} />
+              <p className="text-sm font-semibold text-ink mb-3">{t.eventos.nuevoEstado}</p>
+              <div className="grid grid-cols-3 gap-2 mb-3">
+                {estadosRapidos.map(e => {
+                  const esSugerido = e === sugerido
+                  const activo = estadoSeleccionado === e
+                  return (
+                    <button
+                      key={e}
+                      type="button"
+                      onClick={() => setEstadoSeleccionado(e)}
+                      className={`min-h-[52px] p-3 rounded-[10px] text-left flex flex-col gap-0.5 transition-colors cursor-pointer ${
+                        activo
+                          ? 'border-2 border-navy bg-icon-bg'
+                          : 'border border-border-subtle bg-surface hover:border-navy/30 hover:bg-canvas'
+                      }`}
+                    >
+                      {esSugerido && (
+                        <span className="text-[11px] font-semibold text-accent-strong leading-none mb-0.5">
+                          SUGERIDO
+                        </span>
+                      )}
+                      <span
+                        className={`text-sm leading-snug ${
+                          activo ? 'font-semibold text-navy' : 'text-ink'
+                        }`}
+                      >
+                        {ESTADOS[e].etiqueta}
+                      </span>
+                    </button>
+                  )
+                })}
+              </div>
+              <button
+                type="button"
+                onClick={() => setVerTodosEstados(v => !v)}
+                className="text-sm text-navy hover:underline cursor-pointer"
+              >
+                {verTodosEstados ? 'Ocultar estados' : t.eventos.verTodosEstados}
+              </button>
+              {verTodosEstados && (
+                <div className="mt-3 grid grid-cols-1 gap-1.5">
+                  {estadosExtendidos.map((e, i) => {
+                    const esPrimerExcepcion = i > 0 && !ESTADOS_EXCEPCION.includes(estadosExtendidos[i - 1]) && ESTADOS_EXCEPCION.includes(e)
+                    const activo = estadoSeleccionado === e
+                    return (
+                      <div key={e}>
+                        {(esPrimerExcepcion || (i === 0 && ESTADOS_EXCEPCION.includes(e))) && (
+                          <div className="border-t border-border-subtle my-2" />
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => { setEstadoSeleccionado(e); setVerTodosEstados(false) }}
+                          className={`w-full flex items-center gap-2 px-3 py-2.5 rounded-[10px] border text-left transition-colors cursor-pointer ${
+                            activo
+                              ? 'border-navy bg-icon-bg'
+                              : 'border-border-subtle hover:border-navy/30 hover:bg-canvas'
+                          }`}
+                        >
+                          <span
+                            className={`w-2 h-2 rounded-full flex-shrink-0 ${
+                              ESTADOS[e]?.colorFondo ?? 'bg-border'
+                            }`}
+                          />
+                          <span className={`text-sm flex-1 ${activo ? 'font-semibold text-navy' : 'text-ink'}`}>
+                            {ESTADOS[e].etiqueta}
+                          </span>
+                          {activo && (
+                            <span className="text-xs font-semibold text-navy">✓</span>
+                          )}
+                        </button>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
             </div>
           )}
 
+          {/* ── Ubicación ───────────────────────────────────────────────────── */}
           <div>
             <label
-              className="block text-xs font-semibold text-ink-muted uppercase tracking-wide mb-1.5"
+              className="block text-sm font-semibold text-ink mb-2"
               htmlFor="panel-ubicacion-texto"
             >
-              {t.eventos.ubicacion} (texto)
+              {t.eventos.ubicacion}
             </label>
             <input
               id="panel-ubicacion-texto"
@@ -427,7 +543,7 @@ export default function PanelEstado({
               value={ubicacion}
               onChange={e => setUbicacion(e.target.value)}
               placeholder={t.eventos.ubicacionPlaceholder}
-              className="w-full px-3 py-2.5 border border-border rounded-lg text-sm bg-surface focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent transition-colors"
+              className="w-full px-3.5 py-3 border border-border-subtle rounded-[10px] text-sm bg-surface focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent transition-colors"
             />
           </div>
 
@@ -439,9 +555,10 @@ export default function PanelEstado({
             }}
           />
 
+          {/* ── Nota para el cliente ─────────────────────────────────────── */}
           <div>
             <label
-              className="block text-xs font-semibold text-ink-muted uppercase tracking-wide mb-1.5"
+              className="block text-sm font-semibold text-ink mb-2"
               htmlFor="panel-nota-publica"
             >
               {t.eventos.notaPublica}
@@ -451,14 +568,15 @@ export default function PanelEstado({
               value={notaPublica}
               onChange={e => setNotaPublica(e.target.value)}
               placeholder={t.eventos.notaPublicaPlaceholder}
-              rows={3}
-              className="w-full px-3 py-2.5 border border-border rounded-lg text-sm bg-surface focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent transition-colors resize-none"
+              rows={2}
+              className="w-full px-3.5 py-3 border border-border-subtle rounded-[10px] text-sm bg-surface focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent transition-colors resize-none"
             />
           </div>
 
+          {/* ── Nota interna ─────────────────────────────────────────────── */}
           <div>
             <label
-              className="block text-xs font-semibold text-ink-muted uppercase tracking-wide mb-1.5"
+              className="block text-sm font-semibold text-ink mb-2"
               htmlFor="panel-nota-interna"
             >
               {t.eventos.notaInterna}
@@ -469,13 +587,14 @@ export default function PanelEstado({
               onChange={e => setNotaInterna(e.target.value)}
               placeholder={t.eventos.notaInternaPlaceholder}
               rows={2}
-              className="w-full px-3 py-2.5 border border-border rounded-lg text-sm bg-surface focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent transition-colors resize-none"
+              className="w-full px-3.5 py-3 border border-border-subtle rounded-[10px] text-sm bg-surface focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent transition-colors resize-none"
             />
           </div>
 
+          {/* ── Fecha y hora ─────────────────────────────────────────────── */}
           <div>
             <label
-              className="block text-xs font-semibold text-ink-muted uppercase tracking-wide mb-1.5"
+              className="block text-sm font-semibold text-ink mb-2"
               htmlFor="panel-fecha"
             >
               {t.eventos.fechaHora}
@@ -486,35 +605,38 @@ export default function PanelEstado({
               value={fechaHora}
               max={maxFecha}
               onChange={e => setFechaHora(e.target.value)}
-              className="w-full px-3 py-2.5 border border-border rounded-lg text-sm bg-surface focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent transition-colors"
+              className="w-full px-3.5 py-3 border border-border-subtle rounded-[10px] text-sm bg-surface focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent transition-colors"
             />
           </div>
 
           {error && (
-            <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+            <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-[10px] px-3.5 py-3">
               {error}
             </p>
           )}
         </div>
 
-        <div className="flex gap-2 px-5 py-4 border-t border-border flex-shrink-0">
+        {/* Footer */}
+        <div className="flex gap-3 px-7 py-4 border-t border-[#E3E8F0] flex-shrink-0">
+          <button
+            onClick={onClose}
+            disabled={cargando}
+            className="flex-1 min-h-12 py-0 border border-border-subtle text-ink text-sm rounded-[10px] hover:bg-canvas disabled:opacity-40 cursor-pointer transition-colors"
+          >
+            {t.comun.cancelar}
+          </button>
           <button
             onClick={handleGuardar}
             disabled={cargando || confirmsQueue.length > 0}
-            className="flex-1 py-2.5 bg-navy text-white text-sm font-semibold rounded-lg hover:bg-navy/90 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer transition-colors"
+            className="flex-[2] min-h-12 py-0 bg-accent-strong text-white text-sm font-semibold rounded-[10px] hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer transition-colors"
           >
             {cargando
               ? t.eventos.cargando
               : esEdicion
               ? t.eventos.botonGuardarEdicion
-              : t.eventos.botonGuardar}
-          </button>
-          <button
-            onClick={onClose}
-            disabled={cargando}
-            className="flex-1 py-2.5 border border-border text-ink text-sm rounded-lg hover:bg-canvas disabled:opacity-40 cursor-pointer transition-colors"
-          >
-            {t.comun.cancelar}
+              : modoMasivo
+              ? t.eventos.botonGuardar
+              : t.eventos.botonGuardarYNotificar}
           </button>
         </div>
       </div>

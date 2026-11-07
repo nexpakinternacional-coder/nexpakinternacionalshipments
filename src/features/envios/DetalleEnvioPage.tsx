@@ -12,6 +12,7 @@ import { Skeleton } from '../../components/Skeleton'
 import EnvioForm from './EnvioForm'
 import { type EnvioFormData } from './schema'
 import PanelEstado from '../eventos/PanelEstado'
+import MapaEnvio, { type DatosMapa } from '../../components/MapaEnvio'
 import { t } from '../../textos/es'
 
 type Envio = Tables<'envios'>
@@ -25,8 +26,8 @@ interface ToastDato {
 
 function TarjetaInfo({ titulo, children }: { titulo: string; children: React.ReactNode }) {
   return (
-    <div className="bg-surface border border-border rounded-xl p-5">
-      <h2 className="text-xs font-semibold text-navy uppercase tracking-wide mb-4">{titulo}</h2>
+    <div className="bg-surface border border-border-subtle rounded-2xl p-5">
+      <h2 className="font-display text-sm font-bold text-navy mb-4">{titulo}</h2>
       <dl className="space-y-3">{children}</dl>
     </div>
   )
@@ -550,7 +551,7 @@ export default function DetalleEnvioPage() {
       )}
 
       {/* Header card */}
-      <div className="bg-surface border border-border rounded-xl p-5 mb-6">
+      <div className="bg-surface border border-border-subtle rounded-2xl p-5 mb-6">
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
           <div>
             <div className="flex items-center gap-2 mb-2">
@@ -586,7 +587,7 @@ export default function DetalleEnvioPage() {
             {envio.activo && (
               <button
                 onClick={() => { setEventoEditando(null); setMostrarPanelEstado(true) }}
-                className="flex items-center gap-1.5 px-3 py-2 bg-navy text-white rounded-lg text-sm font-semibold hover:bg-navy/90 transition-colors cursor-pointer"
+                className="flex items-center gap-1.5 px-4 py-2.5 bg-accent-strong text-white rounded-[10px] text-sm font-semibold hover:bg-accent transition-colors cursor-pointer min-h-11"
               >
                 {t.eventos.actualizarEstado}
               </button>
@@ -679,9 +680,38 @@ export default function DetalleEnvioPage() {
         </TarjetaInfo>
       </div>
 
+      {/* Mapa del recorrido */}
+      {(() => {
+        const puntosEvento: DatosMapa['eventos'] = [...eventos]
+          .filter(ev => ev.lat != null && ev.lng != null && !ev.anulado)
+          .reverse()
+          .map(ev => ({ lat: ev.lat!, lng: ev.lng!, etiqueta: ev.ubicacion_etiqueta ?? ev.ubicacion ?? '' }))
+        const datosMapa: DatosMapa = {
+          origen:
+            envio.origen_lat != null && envio.origen_lng != null
+              ? { lat: envio.origen_lat, lng: envio.origen_lng, etiqueta: `${envio.remitente_ciudad}, ${envio.remitente_pais}` }
+              : undefined,
+          destino:
+            envio.destino_lat != null && envio.destino_lng != null
+              ? { lat: envio.destino_lat, lng: envio.destino_lng, etiqueta: `${envio.destinatario_ciudad}, ${envio.destinatario_pais}` }
+              : undefined,
+          eventos: puntosEvento,
+        }
+        const tieneMapa = datosMapa.origen || datosMapa.destino || puntosEvento.length > 0
+        if (!tieneMapa) return null
+        return (
+          <div className="bg-surface border border-border-subtle rounded-2xl overflow-hidden mb-6">
+            <div className="px-5 pt-5 pb-3">
+              <h2 className="font-display text-sm font-bold text-navy">Recorrido del paquete</h2>
+            </div>
+            <MapaEnvio datos={datosMapa} className="h-64 lg:h-80" />
+          </div>
+        )
+      })()}
+
       {/* Timeline */}
-      <div className="bg-surface border border-border rounded-xl p-5">
-        <h2 className="text-xs font-semibold text-navy uppercase tracking-wide mb-5">
+      <div className="bg-surface border border-border-subtle rounded-2xl p-5">
+        <h2 className="font-display text-sm font-bold text-navy mb-5">
           {t.envios.detalleHistorial}
         </h2>
         {eventos.length === 0 ? (
@@ -805,6 +835,8 @@ export default function DetalleEnvioPage() {
         <PanelEstado
           envioId={envio.id}
           estadoActual={envio.estado_actual}
+          guia={envio.guia}
+          destinatario={envio.destinatario_nombre}
           eventoEditar={eventoEditando}
           onClose={() => { setMostrarPanelEstado(false); setEventoEditando(null) }}
           onGuardado={onPanelGuardado}

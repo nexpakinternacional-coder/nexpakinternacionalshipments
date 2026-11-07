@@ -128,7 +128,9 @@ export default function LoginPage() {
             style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}
           >
             <div className="mb-8">
-              <p className="text-navy font-semibold text-lg">{t.auth.tituloLogin}</p>
+              <h1 className="font-display text-[22px] font-extrabold text-navy leading-tight">
+                {t.auth.tituloLogin}
+              </h1>
               <p className="text-ink-muted text-sm mt-1">Accede al panel de administración.</p>
             </div>
 

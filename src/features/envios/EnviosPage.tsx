@@ -206,7 +206,7 @@ export default function EnviosPage() {
     <div className="p-6 lg:p-8">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-xl font-semibold text-ink">{t.envios.titulo}</h1>
+        <h1 className="font-display text-2xl font-bold text-navy">{t.envios.titulo}</h1>
         <Link
           to="/admin/envios/nuevo"
           className="flex items-center gap-2 px-4 py-2 bg-accent-strong text-white rounded-lg text-sm font-semibold hover:bg-accent transition-colors cursor-pointer"
@@ -262,7 +262,7 @@ export default function EnviosPage() {
       </div>
 
       {/* Tabla — desktop */}
-      <div className="hidden md:block bg-surface border border-border rounded-xl overflow-hidden">
+      <div className="hidden md:block bg-surface border border-border-subtle rounded-2xl overflow-hidden">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-border bg-canvas">
@@ -350,7 +350,7 @@ export default function EnviosPage() {
           filas.map(fila => (
             <div
               key={fila.id}
-              className={`bg-surface border border-border rounded-lg p-4 transition-colors ${
+              className={`bg-surface border border-border-subtle rounded-2xl p-4 transition-colors ${
                 fila.activo ? 'hover:border-navy/30' : 'opacity-60'
               }`}
             >
