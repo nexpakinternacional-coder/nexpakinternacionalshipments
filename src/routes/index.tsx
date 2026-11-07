@@ -13,6 +13,9 @@ import DetalleEnvioPage from '../features/envios/DetalleEnvioPage'
 import ConfiguracionPage from '../features/configuracion/ConfiguracionPage'
 import MarcaPage from '../features/dev/MarcaPage'
 import MapaPage from '../features/dev/MapaPage'
+import PrivacidadPage from '../features/legal/PrivacidadPage'
+import AvisoPrivacidadPage from '../features/legal/AvisoPrivacidadPage'
+import TerminosPage from '../features/legal/TerminosPage'
 
 // Rutas de diagnóstico visual — solo en desarrollo, no llegan al build de producción
 const rutasDev = import.meta.env.DEV
@@ -41,6 +44,9 @@ export const router = createBrowserRouter([
     children: [
       { path: '/', element: <InicioPage /> },
       { path: '/rastreo/:guia', element: <RastreoPage /> },
+      { path: '/privacidad', element: <PrivacidadPage /> },
+      { path: '/aviso-privacidad', element: <AvisoPrivacidadPage /> },
+      { path: '/terminos', element: <TerminosPage /> },
     ],
   },
   {

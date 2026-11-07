@@ -6,10 +6,8 @@ import logoNegroUrl from '../assets/marca/logo-horizontal-negro.svg?url'
 type Envio = Database['public']['Tables']['envios']['Row']
 
 const URL_BASE =
-  (import.meta as unknown as { env: Record<string, string> }).env.VITE_PUBLIC_URL?.replace(
-    /\/$/,
-    '',
-  ) || window.location.origin
+  (import.meta.env.VITE_PUBLIC_URL as string | undefined)?.replace(/\/$/, '') ||
+  window.location.origin
 
 // 100 × 150 mm in points (1 mm = 2.8346 pt)
 const W_PT = 283.46

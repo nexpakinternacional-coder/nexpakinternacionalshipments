@@ -1,0 +1,26 @@
+name: Keep Supabase alive
+
+on:
+  schedule:
+    # Cada 3 días a las 06:00 UTC (lunes, jueves, domingo)
+    - cron: '0 6 */3 * *'
+  workflow_dispatch:
+
+jobs:
+  ping:
+    name: Ping configuracion_publica
+    runs-on: ubuntu-latest
+    steps:
+      - name: Llamar RPC configuracion_publica
+        run: |
+          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+            -X POST \
+            "${{ secrets.SUPABASE_URL }}/rest/v1/rpc/configuracion_publica" \
+            -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}" \
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}" \
+            -H "Content-Type: application/json")
+          echo "HTTP status: $HTTP_STATUS"
+          if [ "$HTTP_STATUS" != "200" ]; then
+            echo "Error: la RPC devolvió $HTTP_STATUS (esperado 200)."
+            exit 1
+          fi

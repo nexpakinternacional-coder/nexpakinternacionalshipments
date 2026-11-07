@@ -1,0 +1,49 @@
+name: Respaldo semanal de la base de datos
+
+on:
+  schedule:
+    # Domingos a las 03:00 UTC
+    - cron: '0 3 * * 0'
+  workflow_dispatch:
+
+jobs:
+  backup:
+    name: Dump, comprimir y cifrar
+    runs-on: ubuntu-latest
+    steps:
+      - name: Instalar CLI de Supabase
+        run: |
+          curl -fsSL https://github.com/supabase/cli/releases/latest/download/supabase_linux_amd64.tar.gz \
+            | tar -xz supabase
+          sudo mv supabase /usr/local/bin/
+
+      - name: Generar dumps (roles, esquema, datos)
+        env:
+          # SUPABASE_DB_URL usa el Session pooler para compatibilidad con IPv4.
+          # Formato: postgresql://postgres.[ref]:[password]@aws-0-[region].pooler.supabase.com:5432/postgres
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          supabase db dump --db-url "$SUPABASE_DB_URL" --role-only  -f roles.sql
+          supabase db dump --db-url "$SUPABASE_DB_URL"              -f schema.sql
+          supabase db dump --db-url "$SUPABASE_DB_URL" --data-only  -f data.sql
+
+      - name: Comprimir y cifrar con GPG
+        env:
+          BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+        run: |
+          FECHA=$(date -u +%Y-%m-%d)
+          tar -czf "backup-${FECHA}.tar.gz" roles.sql schema.sql data.sql
+          echo "$BACKUP_PASSPHRASE" | gpg \
+            --batch --yes --passphrase-fd 0 \
+            --symmetric --cipher-algo AES256 \
+            --output "backup-${FECHA}.tar.gz.gpg" \
+            "backup-${FECHA}.tar.gz"
+          # Eliminar archivos intermedios no cifrados
+          rm -f roles.sql schema.sql data.sql "backup-${FECHA}.tar.gz"
+
+      - name: Subir artifact (90 días de retención)
+        uses: actions/upload-artifact@v4
+        with:
+          name: backup-${{ github.run_id }}
+          path: backup-*.tar.gz.gpg
+          retention-days: 90

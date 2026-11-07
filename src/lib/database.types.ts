@@ -72,6 +72,71 @@ export type Database = {
         }
         Relationships: []
       }
+      configuracion_sitio: {
+        Row: {
+          actualizado_por: string | null
+          ciudad: string | null
+          correo: string | null
+          direccion: string | null
+          horario_atencion: string | null
+          id: number
+          moneda: string
+          nit: string | null
+          precio_desde_estandar: number | null
+          precio_desde_express: number | null
+          razon_social: string | null
+          telefono: string | null
+          tiempos: Json | null
+          unidad_peso: string
+          updated_at: string
+          whatsapp: string | null
+        }
+        Insert: {
+          actualizado_por?: string | null
+          ciudad?: string | null
+          correo?: string | null
+          direccion?: string | null
+          horario_atencion?: string | null
+          id?: number
+          moneda?: string
+          nit?: string | null
+          precio_desde_estandar?: number | null
+          precio_desde_express?: number | null
+          razon_social?: string | null
+          telefono?: string | null
+          tiempos?: Json | null
+          unidad_peso?: string
+          updated_at?: string
+          whatsapp?: string | null
+        }
+        Update: {
+          actualizado_por?: string | null
+          ciudad?: string | null
+          correo?: string | null
+          direccion?: string | null
+          horario_atencion?: string | null
+          id?: number
+          moneda?: string
+          nit?: string | null
+          precio_desde_estandar?: number | null
+          precio_desde_express?: number | null
+          razon_social?: string | null
+          telefono?: string | null
+          tiempos?: Json | null
+          unidad_peso?: string
+          updated_at?: string
+          whatsapp?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "configuracion_sitio_actualizado_por_fkey"
+            columns: ["actualizado_por"]
+            isOneToOne: false
+            referencedRelation: "perfiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       envios: {
         Row: {
           activo: boolean
@@ -341,6 +406,7 @@ export type Database = {
         Args: { p_evento_id: string; p_motivo: string }
         Returns: undefined
       }
+      configuracion_publica: { Args: never; Returns: Json }
       es_admin: { Args: never; Returns: boolean }
       es_staff: { Args: never; Returns: boolean }
       generar_guia: { Args: never; Returns: string }

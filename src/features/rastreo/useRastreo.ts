@@ -59,7 +59,7 @@ export function useRastreo(guiaRaw: string) {
         setDatos(null)
         return
       }
-      setDatos(data as DatoRastreo)
+      setDatos(data as unknown as DatoRastreo)
       setEstadoHook('encontrado')
       setUltimaActualizacion(new Date())
     } catch {

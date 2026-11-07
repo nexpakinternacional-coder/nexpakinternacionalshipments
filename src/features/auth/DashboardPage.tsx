@@ -5,7 +5,6 @@ import { supabase } from '../../lib/supabase'
 import { useAuth } from './AuthContext'
 import { formatearGuia } from '../../lib/guia'
 import { ESTADOS, FLUJO_NORMAL, type EstadoEnvio } from '../../lib/estados'
-import BadgeEstado from '../../components/BadgeEstado'
 import { Skeleton } from '../../components/Skeleton'
 import { t } from '../../textos/es'
 
@@ -382,7 +381,7 @@ function Grafico14d({ datos }: { datos: Dia14[] }) {
   const hoy = new Date().toISOString().slice(0, 10)
   const primerFecha = datos[0]?.fecha ?? ''
   const fechaDisplay = (iso: string) => {
-    const [, m, d] = iso.split('-')
+    const [,, d] = iso.split('-')
     return `${parseInt(d)} ${new Intl.DateTimeFormat('es', { month: 'short' }).format(new Date(iso))}`
   }
 
@@ -473,7 +472,7 @@ export default function DashboardPage() {
       setCargando(false)
       return
     }
-    setResumen(data as ResumenDashboard)
+    setResumen(data as unknown as ResumenDashboard)
     setCargando(false)
   }
 

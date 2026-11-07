@@ -50,6 +50,7 @@ const esquema = z.object({
 })
 
 type FormValues = z.input<typeof esquema>
+type FormOutput = z.output<typeof esquema>
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -227,7 +228,7 @@ export default function ConfiguracionPage() {
     watch,
     reset,
     formState: { errors, isDirty },
-  } = useForm<FormValues>({
+  } = useForm<FormValues, unknown, FormOutput>({
     resolver: zodResolver(esquema),
     defaultValues: configToForm(config),
   })
@@ -273,7 +274,7 @@ export default function ConfiguracionPage() {
     toastRef.current = setTimeout(() => setToast(null), 3500)
   }
 
-  const onSubmit: SubmitHandler<FormValues> = async (data) => {
+  const onSubmit: SubmitHandler<FormOutput> = async (data) => {
     if (!esAdmin) return
     setGuardando(true)
     try {
@@ -306,7 +307,23 @@ export default function ConfiguracionPage() {
       if (error) throw new Error(error.message)
 
       mostrarToast('Configuración guardada correctamente')
-      reset(data)
+      // Reconstruir el config guardado y pasarlo a configToForm para que reset
+      // reciba valores en formato string (FormValues), no en formato número (FormOutput).
+      reset(configToForm({
+        whatsapp:              data.whatsapp              ?? '',
+        telefono:              data.telefono              ?? '',
+        correo:                data.correo                ?? '',
+        direccion:             data.direccion             ?? '',
+        ciudad:                data.ciudad                ?? '',
+        horario_atencion:      data.horario_atencion      ?? '',
+        moneda:                data.moneda,
+        unidad_peso:           data.unidad_peso,
+        precio_desde_estandar: data.precio_desde_estandar,
+        precio_desde_express:  data.precio_desde_express,
+        tiempos,
+        razon_social:          data.razon_social          ?? '',
+        nit:                   data.nit                   ?? '',
+      }))
       if (perfil) {
         setUltimaActualizacion({
           fecha: new Intl.DateTimeFormat('es', {
@@ -416,9 +433,11 @@ export default function ConfiguracionPage() {
                 <Campo label="Ciudad" id="ciudad">
                   <Input id="ciudad" placeholder="Houston, TX" {...register('ciudad')} />
                 </Campo>
-                <Campo label="Horario de atención" id="horario_atencion" className="sm:col-span-2">
-                  <Input id="horario_atencion" placeholder="Lun–Vie 9 am–6 pm" {...register('horario_atencion')} />
-                </Campo>
+                <div className="sm:col-span-2">
+                  <Campo label="Horario de atención" id="horario_atencion">
+                    <Input id="horario_atencion" placeholder="Lun–Vie 9 am–6 pm" {...register('horario_atencion')} />
+                  </Campo>
+                </div>
               </div>
             </SeccionFormulario>
 

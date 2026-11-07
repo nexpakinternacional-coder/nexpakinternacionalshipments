@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import {
   Globe,
   MessageCircle,
@@ -719,9 +719,9 @@ function Pie({
             )}
             <div className="flex flex-col gap-2.5">
               <strong className="text-white font-semibold">Legal</strong>
-              <a href="#inicio" className="text-[#C9D3E3] hover:text-white transition-colors">Política de datos personales</a>
-              <a href="#inicio" className="text-[#C9D3E3] hover:text-white transition-colors">Aviso de privacidad</a>
-              <a href="#inicio" className="text-[#C9D3E3] hover:text-white transition-colors">Términos del servicio</a>
+              <Link to="/privacidad" className="text-[#C9D3E3] hover:text-white transition-colors">Política de datos personales</Link>
+              <Link to="/aviso-privacidad" className="text-[#C9D3E3] hover:text-white transition-colors">Aviso de privacidad</Link>
+              <Link to="/terminos" className="text-[#C9D3E3] hover:text-white transition-colors">Términos del servicio</Link>
             </div>
           </div>
         </div>
