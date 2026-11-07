@@ -60,7 +60,9 @@ function mkActualEl(etiqueta?: string): HTMLElement {
   const wrap = document.createElement('div')
   wrap.style.cssText = 'position:relative;width:44px;height:52px;'
   const halo = document.createElement('div')
-  halo.style.cssText = `position:absolute;top:0;left:0;right:0;bottom:8px;border-radius:50%;background:${ACCENT};opacity:0.18;transform:scale(1.6);pointer-events:none;`
+  // anchor:'bottom' coloca bottom-center del wrap en la coordenada → (22,52) en px del wrap.
+  // bottom:-14px + height:28px centra el halo en y=52; left:8px lo centra en x=22.
+  halo.style.cssText = `position:absolute;width:28px;height:28px;left:8px;bottom:-14px;border-radius:50%;background:${ACCENT};opacity:0.18;transform:scale(1.6);pointer-events:none;`
   const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
   svg.setAttribute('viewBox', '0 0 44 52')
   svg.setAttribute('width', '44')
@@ -128,6 +130,7 @@ export default function MapaEnvio({ datos, className = '' }: MapaEnvioProps) {
       try {
         const pts    = puntosMapa(datosRef.current)
         const centro = centroide(pts)
+        const esTactil = navigator.maxTouchPoints > 0 || 'ontouchstart' in window
 
         mapa = new ml.Map({
           container: contenedorRef.current,
@@ -135,7 +138,12 @@ export default function MapaEnvio({ datos, className = '' }: MapaEnvioProps) {
           attributionControl: false,
           center: centro,
           zoom: 2,
-          cooperativeGestures: true,
+          cooperativeGestures: esTactil,
+          locale: {
+            'CooperativeGesturesHandler.MobileHelpText': 'Usa dos dedos para mover el mapa',
+            'CooperativeGesturesHandler.WindowsHelpText': 'Usa Ctrl + desplazamiento para hacer zoom',
+            'CooperativeGesturesHandler.MacHelpText': 'Usa ⌘ + desplazamiento para hacer zoom',
+          },
         })
         mapaRef.current = mapa
 
@@ -187,7 +195,7 @@ export default function MapaEnvio({ datos, className = '' }: MapaEnvioProps) {
           if (d.origen) {
             const el = mkOrigenEl()
             if (d.origen.etiqueta) el.setAttribute('title', d.origen.etiqueta)
-            new ml.Marker({ element: el })
+            new ml.Marker({ element: el, anchor: 'center' })
               .setLngLat([d.origen.lng, d.origen.lat])
               .addTo(mapa!)
           }
@@ -196,7 +204,7 @@ export default function MapaEnvio({ datos, className = '' }: MapaEnvioProps) {
           if (d.destino) {
             const el = mkDestinoEl()
             if (d.destino.etiqueta) el.setAttribute('title', d.destino.etiqueta)
-            new ml.Marker({ element: el })
+            new ml.Marker({ element: el, anchor: 'center' })
               .setLngLat([d.destino.lng, d.destino.lat])
               .addTo(mapa!)
           }
@@ -209,6 +217,11 @@ export default function MapaEnvio({ datos, className = '' }: MapaEnvioProps) {
               .setLngLat([ubicActual.lng, ubicActual.lat])
               .addTo(mapa!)
           }
+
+          // Colapsar atribución si MapLibre la abrió automáticamente al cargar
+          mapa!.getContainer()
+            .querySelectorAll('.maplibregl-ctrl-attrib.maplibregl-compact-show')
+            .forEach(el => el.classList.remove('maplibregl-compact-show'))
 
           // Forzar redimensión del canvas antes de encuadrar
           mapa!.resize()
@@ -334,13 +347,13 @@ export default function MapaEnvio({ datos, className = '' }: MapaEnvioProps) {
             title="Centrar en mi paquete"
             style={{
               position: 'absolute', top: 76, right: 10, zIndex: 2,
-              width: 29, height: 29, padding: 0,
+              width: 44, height: 44, padding: 0,
               background: '#fff', border: '1px solid rgba(0,0,0,0.3)',
               borderRadius: 4, cursor: 'pointer',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}
           >
-            <LocateFixed size={14} color="#333" strokeWidth={1.75} />
+            <LocateFixed size={18} color="#333" strokeWidth={1.75} />
           </button>
 
           {/* Leyenda (atribución la muestra el control compacto de MapLibre) */}

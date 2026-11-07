@@ -99,12 +99,19 @@ export default function SelectorUbicacion({
           ? [recorrido[recorrido.length - 1].lng, recorrido[recorrido.length - 1].lat]
           : [-100, 23]
 
+        const esTactil = navigator.maxTouchPoints > 0 || 'ontouchstart' in window
         const mapa = new ml.Map({
           container: contenedorRef.current,
           style: ESTILO_MAPA,
           center: centro,
           zoom: valor ? 10 : recorrido.length >= 2 ? 3 : 3,
           attributionControl: false,
+          cooperativeGestures: esTactil,
+          locale: {
+            'CooperativeGesturesHandler.MobileHelpText': 'Usa dos dedos para mover el mapa',
+            'CooperativeGesturesHandler.WindowsHelpText': 'Usa Ctrl + desplazamiento para hacer zoom',
+            'CooperativeGesturesHandler.MacHelpText': 'Usa ⌘ + desplazamiento para hacer zoom',
+          },
         })
         mapaRef.current = mapa
 
@@ -140,6 +147,11 @@ export default function SelectorUbicacion({
               )
             }
           }
+
+          // Colapsar atribución si MapLibre la abrió automáticamente al cargar
+          mapa.getContainer()
+            .querySelectorAll('.maplibregl-ctrl-attrib.maplibregl-compact-show')
+            .forEach(el => el.classList.remove('maplibregl-compact-show'))
 
           // Pin arrastrable
           if (valor) {
