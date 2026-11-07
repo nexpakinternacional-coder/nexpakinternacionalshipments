@@ -39,6 +39,12 @@ const ACCENT = '#E8500A'
 // Límite: 1 búsqueda por segundo en Nominatim
 let ultimaBusquedaTs = 0
 
+function calcPadding(el: HTMLElement): number {
+  const { width, height } = el.getBoundingClientRect()
+  const menor = Math.min(width || 300, height || 280)
+  return Math.max(24, Math.min(60, Math.round(menor * 0.12)))
+}
+
 export default function SelectorUbicacion({
   valor,
   onChange,
@@ -81,74 +87,85 @@ export default function SelectorUbicacion({
     if (!contenedorRef.current || cargadoRef.current) return
     cargadoRef.current = true
 
+    let resizeObserver: ResizeObserver | null = null
+
     cargarMapLibre().then((ml) => {
       if (!contenedorRef.current) return
 
       try {
-      const centro: [number, number] = valor
-        ? [valor.lng, valor.lat]
-        : recorrido.length > 0
-        ? [recorrido[recorrido.length - 1].lng, recorrido[recorrido.length - 1].lat]
-        : [-100, 23]
+        const centro: [number, number] = valor
+          ? [valor.lng, valor.lat]
+          : recorrido.length > 0
+          ? [recorrido[recorrido.length - 1].lng, recorrido[recorrido.length - 1].lat]
+          : [-100, 23]
 
-      const mapa = new ml.Map({
-        container: contenedorRef.current,
-        style: ESTILO_MAPA,
-        center: centro,
-        zoom: valor ? 10 : 3,
-        attributionControl: false,
-      })
-      mapaRef.current = mapa
-
-      mapa.addControl(
-        new ml.AttributionControl({ compact: true }),
-        'bottom-left',
-      )
-      mapa.addControl(new ml.NavigationControl({ showCompass: false }), 'top-right')
-
-      mapa.on('load', () => {
-        // Recorrido previo como contexto
-        if (recorrido.length >= 2) {
-          mapa.addSource('ctx-recorrido', {
-            type: 'geojson',
-            data: {
-              type: 'Feature',
-              geometry: {
-                type: 'LineString',
-                coordinates: recorrido.map(p => [p.lng, p.lat]),
-              },
-              properties: {},
-            },
-          })
-          mapa.addLayer({
-            id: 'ctx-recorrido-linea',
-            type: 'line',
-            source: 'ctx-recorrido',
-            paint: { 'line-color': NAVY, 'line-width': 2, 'line-opacity': 0.4 },
-          })
-        }
-
-        // Pin arrastrable
-        if (valor) {
-          colocarMarcador(ml, mapa, valor.lng, valor.lat)
-        }
-
-        // Clic en el mapa para colocar pin
-        mapa.on('click', (e) => {
-          const { lng, lat } = e.lngLat
-          colocarMarcador(ml, mapa, lng, lat)
-          const nueva: UbicacionSeleccionada = {
-            lat: parseFloat(lat.toFixed(6)),
-            lng: parseFloat(lng.toFixed(6)),
-            etiqueta: etiquetaEditable,
-          }
-          onChange(nueva)
+        const mapa = new ml.Map({
+          container: contenedorRef.current,
+          style: ESTILO_MAPA,
+          center: centro,
+          zoom: valor ? 10 : recorrido.length >= 2 ? 3 : 3,
+          attributionControl: false,
         })
-      })
+        mapaRef.current = mapa
+
+        mapa.addControl(new ml.AttributionControl({ compact: true }), 'bottom-left')
+        mapa.addControl(new ml.NavigationControl({ showCompass: false }), 'top-right')
+
+        mapa.on('load', () => {
+          // Recorrido previo como contexto
+          if (recorrido.length >= 2) {
+            mapa.addSource('ctx-recorrido', {
+              type: 'geojson',
+              data: {
+                type: 'Feature',
+                geometry: { type: 'LineString', coordinates: recorrido.map(p => [p.lng, p.lat]) },
+                properties: {},
+              },
+            })
+            mapa.addLayer({
+              id: 'ctx-recorrido-linea',
+              type: 'line',
+              source: 'ctx-recorrido',
+              paint: { 'line-color': NAVY, 'line-width': 2, 'line-opacity': 0.4 },
+            })
+
+            // Encuadrar al recorrido completo si no hay valor seleccionado
+            if (!valor && contenedorRef.current) {
+              const pts = recorrido.map(p => [p.lng, p.lat] as [number, number])
+              const lngs = pts.map(p => p[0])
+              const lats = pts.map(p => p[1])
+              mapa.fitBounds(
+                [[Math.min(...lngs), Math.min(...lats)], [Math.max(...lngs), Math.max(...lats)]],
+                { padding: calcPadding(contenedorRef.current), maxZoom: 8, duration: 0 },
+              )
+            }
+          }
+
+          // Pin arrastrable
+          if (valor) {
+            colocarMarcador(ml, mapa, valor.lng, valor.lat)
+          }
+
+          // Clic en el mapa para colocar pin
+          mapa.on('click', (e) => {
+            const { lng, lat } = e.lngLat
+            colocarMarcador(ml, mapa, lng, lat)
+            const nueva: UbicacionSeleccionada = {
+              lat: parseFloat(lat.toFixed(6)),
+              lng: parseFloat(lng.toFixed(6)),
+              etiqueta: etiquetaEditable,
+            }
+            onChange(nueva)
+          })
+
+          resizeObserver = new ResizeObserver(() => { mapa.resize() })
+          if (contenedorRef.current) resizeObserver.observe(contenedorRef.current)
+        })
       } catch { setErrorMapa(true) }
     }).catch(() => setErrorMapa(true))
 
     return () => {
+      resizeObserver?.disconnect()
       mapaRef.current?.remove()
       mapaRef.current = null
       marcadorRef.current = null
@@ -386,7 +403,7 @@ export default function SelectorUbicacion({
           </div>
         ) : (
           <>
-            <div ref={contenedorRef} className="absolute inset-0" />
+            <div ref={contenedorRef} style={{ width: '100%', height: '100%' }} />
 
             {/* Instrucción */}
             {!valor && (
@@ -397,13 +414,6 @@ export default function SelectorUbicacion({
                 Arrastra el pin o haz clic en el mapa para ubicar
               </div>
             )}
-
-            <span
-              className="absolute left-2 bottom-1.5 text-[10px] text-[#374151]"
-              style={{ background: 'rgba(255,255,255,0.85)', padding: '2px 6px', borderRadius: 4, zIndex: 1 }}
-            >
-              © OpenFreeMap · © OpenStreetMap
-            </span>
           </>
         )}
       </div>

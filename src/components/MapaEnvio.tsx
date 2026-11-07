@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { LocateFixed } from 'lucide-react'
 import { cargarMapLibre } from '../lib/maplibre'
 
 export interface PuntoMapa {
@@ -21,177 +22,206 @@ interface MapaEnvioProps {
 const NAVY   = '#0F2D5E'
 const ACCENT = '#E8500A'
 
+function calcPadding(el: HTMLElement): number {
+  const { width, height } = el.getBoundingClientRect()
+  const menor = Math.min(width || 300, height || 300)
+  return Math.max(24, Math.min(60, Math.round(menor * 0.12)))
+}
+
+function puntosMapa(d: DatosMapa): [number, number][] {
+  const pts: [number, number][] = []
+  if (d.origen) pts.push([d.origen.lng, d.origen.lat])
+  for (const ev of d.eventos) pts.push([ev.lng, ev.lat])
+  if (d.destino) pts.push([d.destino.lng, d.destino.lat])
+  return pts
+}
+
+function centroide(pts: [number, number][]): [number, number] {
+  if (pts.length === 0) return [-90, 30]
+  return [
+    pts.reduce((s, p) => s + p[0], 0) / pts.length,
+    pts.reduce((s, p) => s + p[1], 0) / pts.length,
+  ]
+}
+
+function mkOrigenEl(): HTMLElement {
+  const el = document.createElement('div')
+  el.style.cssText = `width:14px;height:14px;border-radius:50%;background:#fff;border:3px solid ${NAVY};box-shadow:0 1px 4px rgba(0,0,0,0.25);`
+  return el
+}
+
+function mkDestinoEl(): HTMLElement {
+  const el = document.createElement('div')
+  el.style.cssText = `width:14px;height:14px;border-radius:3px;background:#fff;border:3px solid ${NAVY};box-shadow:0 1px 4px rgba(0,0,0,0.25);`
+  return el
+}
+
+function mkActualEl(etiqueta?: string): HTMLElement {
+  const wrap = document.createElement('div')
+  wrap.style.cssText = 'position:relative;width:44px;height:52px;'
+  const halo = document.createElement('div')
+  halo.style.cssText = `position:absolute;top:0;left:0;right:0;bottom:8px;border-radius:50%;background:${ACCENT};opacity:0.18;transform:scale(1.6);pointer-events:none;`
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
+  svg.setAttribute('viewBox', '0 0 44 52')
+  svg.setAttribute('width', '44')
+  svg.setAttribute('height', '52')
+  svg.innerHTML = `
+    <path d="M22 2C13.16 2 6 9.16 6 18C6 30 22 50 22 50C22 50 38 30 38 18C38 9.16 30.84 2 22 2Z"
+      fill="${ACCENT}" stroke="#fff" stroke-width="2"/>
+    <circle cx="22" cy="17" r="6" fill="#fff"/>
+  `
+  if (etiqueta) svg.setAttribute('aria-label', etiqueta)
+  wrap.appendChild(halo)
+  wrap.appendChild(svg)
+  return wrap
+}
+
 export default function MapaEnvio({ datos, className = '' }: MapaEnvioProps) {
-  const contenedorRef = useRef<HTMLDivElement>(null)
-  const mapaRef       = useRef<import('maplibre-gl').Map | null>(null)
-  const cargadoRef    = useRef(false)
+  const contenedorRef   = useRef<HTMLDivElement>(null)
+  const mapaRef         = useRef<import('maplibre-gl').Map | null>(null)
+  const mlRef           = useRef<Awaited<ReturnType<typeof cargarMapLibre>> | null>(null)
+  const cargadoRef      = useRef(false)
+  const mapaListoRef    = useRef(false)
+  const markerActualRef = useRef<import('maplibre-gl').Marker | null>(null)
+  const datosRef        = useRef(datos)
   const [errorMapa, setErrorMapa] = useState(false)
 
-  const tieneCoordenadas =
-    datos.origen || datos.destino || datos.eventos.length > 0
+  // Mantener ref sincronizada sin disparar efectos
+  datosRef.current = datos
 
+  const tieneCoordenadas = !!(datos.origen || datos.destino || datos.eventos.length > 0)
+
+  const encuadrar = useCallback((animado = false) => {
+    const mapa = mapaRef.current
+    const el   = contenedorRef.current
+    if (!mapa || !el) return
+
+    const pts = puntosMapa(datosRef.current)
+    if (pts.length === 0) return
+
+    const padding = calcPadding(el)
+
+    if (pts.length === 1) {
+      mapa[animado ? 'easeTo' : 'jumpTo']({ center: pts[0], zoom: 6 })
+    } else {
+      const lngs = pts.map(p => p[0])
+      const lats = pts.map(p => p[1])
+      mapa.fitBounds(
+        [[Math.min(...lngs), Math.min(...lats)], [Math.max(...lngs), Math.max(...lats)]],
+        { padding, maxZoom: 6, duration: animado ? 800 : 0 },
+      )
+    }
+  }, [])
+
+  // Crear el mapa una sola vez
   useEffect(() => {
     if (!tieneCoordenadas || !contenedorRef.current || cargadoRef.current) return
     cargadoRef.current = true
 
     let mapa: import('maplibre-gl').Map | null = null
+    let resizeObserver: ResizeObserver | null  = null
 
     cargarMapLibre().then((ml) => {
+      mlRef.current = ml
       if (!contenedorRef.current) return
 
       try {
+        const pts    = puntosMapa(datosRef.current)
+        const centro = centroide(pts)
+
         mapa = new ml.Map({
           container: contenedorRef.current,
           style: 'https://tiles.openfreemap.org/styles/liberty',
           attributionControl: false,
-          center: [0, 20],
+          center: centro,
           zoom: 2,
+          cooperativeGestures: true,
         })
         mapaRef.current = mapa
 
-        mapa.addControl(
-          new ml.AttributionControl({ compact: true }),
-          'bottom-left',
-        )
+        mapa.addControl(new ml.AttributionControl({ compact: true }), 'bottom-left')
         mapa.addControl(new ml.NavigationControl({ showCompass: false }), 'top-right')
-
         mapa.on('error', () => setErrorMapa(true))
 
         mapa.on('load', () => {
-          const todosPuntos: [number, number][] = []
-
-          if (datos.origen) todosPuntos.push([datos.origen.lng, datos.origen.lat])
-          for (const ev of datos.eventos) todosPuntos.push([ev.lng, ev.lat])
-          if (datos.destino) todosPuntos.push([datos.destino.lng, datos.destino.lat])
+          mapaListoRef.current = true
+          const d = datosRef.current
 
           // Tramo recorrido (origen → eventos)
           const puntosRecorridos: [number, number][] = []
-          if (datos.origen) puntosRecorridos.push([datos.origen.lng, datos.origen.lat])
-          for (const ev of datos.eventos) puntosRecorridos.push([ev.lng, ev.lat])
+          if (d.origen) puntosRecorridos.push([d.origen.lng, d.origen.lat])
+          for (const ev of d.eventos) puntosRecorridos.push([ev.lng, ev.lat])
 
           if (puntosRecorridos.length >= 2) {
             mapa!.addSource('recorrido', {
               type: 'geojson',
-              data: {
-                type: 'Feature',
-                geometry: { type: 'LineString', coordinates: puntosRecorridos },
-                properties: {},
-              },
+              data: { type: 'Feature', geometry: { type: 'LineString', coordinates: puntosRecorridos }, properties: {} },
             })
             mapa!.addLayer({
-              id: 'recorrido-linea',
-              type: 'line',
-              source: 'recorrido',
+              id: 'recorrido-linea', type: 'line', source: 'recorrido',
               paint: { 'line-color': NAVY, 'line-width': 3 },
               layout: { 'line-cap': 'round' },
             })
           }
 
           // Tramo pendiente (posición actual → destino)
-          const ultimoEventoIdx = datos.eventos.length - 1
-          const posActual =
-            datos.eventos.length > 0 ? datos.eventos[ultimoEventoIdx] : datos.origen
-
-          if (posActual && datos.destino) {
+          const ultimoEvIdx = d.eventos.length - 1
+          const posActual   = d.eventos.length > 0 ? d.eventos[ultimoEvIdx] : d.origen
+          if (posActual && d.destino) {
             mapa!.addSource('pendiente', {
               type: 'geojson',
               data: {
                 type: 'Feature',
-                geometry: {
-                  type: 'LineString',
-                  coordinates: [
-                    [posActual.lng, posActual.lat],
-                    [datos.destino.lng, datos.destino.lat],
-                  ],
-                },
+                geometry: { type: 'LineString', coordinates: [[posActual.lng, posActual.lat], [d.destino.lng, d.destino.lat]] },
                 properties: {},
               },
             })
             mapa!.addLayer({
-              id: 'pendiente-linea',
-              type: 'line',
-              source: 'pendiente',
+              id: 'pendiente-linea', type: 'line', source: 'pendiente',
               layout: { 'line-cap': 'round' },
-              paint: {
-                'line-color': NAVY,
-                'line-width': 2,
-                'line-dasharray': [2, 5],
-              },
+              paint: { 'line-color': NAVY, 'line-width': 2, 'line-dasharray': [2, 5] },
             })
           }
 
-          // Origen (círculo con borde azul marino)
-          if (datos.origen) {
-            const el = document.createElement('div')
-            el.style.cssText = `
-              width:14px;height:14px;border-radius:50%;
-              background:#fff;border:3px solid ${NAVY};
-              box-shadow:0 1px 4px rgba(0,0,0,0.25);
-            `
-            if (datos.origen.etiqueta) el.setAttribute('title', datos.origen.etiqueta)
+          // Origen (círculo)
+          if (d.origen) {
+            const el = mkOrigenEl()
+            if (d.origen.etiqueta) el.setAttribute('title', d.origen.etiqueta)
             new ml.Marker({ element: el })
-              .setLngLat([datos.origen.lng, datos.origen.lat])
+              .setLngLat([d.origen.lng, d.origen.lat])
               .addTo(mapa!)
           }
 
-          // Destino (cuadrado con borde azul marino)
-          if (datos.destino) {
-            const el = document.createElement('div')
-            el.style.cssText = `
-              width:14px;height:14px;border-radius:3px;
-              background:#fff;border:3px solid ${NAVY};
-              box-shadow:0 1px 4px rgba(0,0,0,0.25);
-            `
-            if (datos.destino.etiqueta) el.setAttribute('title', datos.destino.etiqueta)
+          // Destino (cuadrado)
+          if (d.destino) {
+            const el = mkDestinoEl()
+            if (d.destino.etiqueta) el.setAttribute('title', d.destino.etiqueta)
             new ml.Marker({ element: el })
-              .setLngLat([datos.destino.lng, datos.destino.lat])
+              .setLngLat([d.destino.lng, d.destino.lat])
               .addTo(mapa!)
           }
 
-          // Ubicación actual (pin naranja con halo)
-          const ubicacionActual =
-            datos.eventos.length > 0 ? datos.eventos[ultimoEventoIdx] : null
-          if (ubicacionActual) {
-            const wrap = document.createElement('div')
-            wrap.style.cssText = 'position:relative;width:44px;height:52px;'
-            const halo = document.createElement('div')
-            halo.style.cssText = `
-              position:absolute;top:0;left:0;right:0;bottom:8px;
-              border-radius:50%;background:${ACCENT};opacity:0.18;
-              transform:scale(1.6);pointer-events:none;
-            `
-            const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
-            svg.setAttribute('viewBox', '0 0 44 52')
-            svg.setAttribute('width', '44')
-            svg.setAttribute('height', '52')
-            svg.innerHTML = `
-              <path d="M22 2C13.16 2 6 9.16 6 18C6 30 22 50 22 50C22 50 38 30 38 18C38 9.16 30.84 2 22 2Z"
-                fill="${ACCENT}" stroke="#fff" stroke-width="2"/>
-              <circle cx="22" cy="17" r="6" fill="#fff"/>
-            `
-            if (ubicacionActual.etiqueta) svg.setAttribute('aria-label', ubicacionActual.etiqueta)
-            wrap.appendChild(halo)
-            wrap.appendChild(svg)
-            new ml.Marker({ element: wrap, anchor: 'bottom' })
-              .setLngLat([ubicacionActual.lng, ubicacionActual.lat])
+          // Ubicación actual (pin naranja)
+          const ubicActual = d.eventos.length > 0 ? d.eventos[ultimoEvIdx] : null
+          if (ubicActual) {
+            const el = mkActualEl(ubicActual.etiqueta)
+            markerActualRef.current = new ml.Marker({ element: el, anchor: 'bottom' })
+              .setLngLat([ubicActual.lng, ubicActual.lat])
               .addTo(mapa!)
           }
 
-          // Encuadre automático
-          if (todosPuntos.length === 1) {
-            mapa!.setCenter(todosPuntos[0])
-            mapa!.setZoom(10)
-          } else if (todosPuntos.length >= 2) {
-            const lngs = todosPuntos.map(p => p[0])
-            const lats = todosPuntos.map(p => p[1])
-            mapa!.fitBounds(
-              [
-                [Math.min(...lngs), Math.min(...lats)],
-                [Math.max(...lngs), Math.max(...lats)],
-              ],
-              { padding: 56, maxZoom: 14, duration: 0 },
-            )
-          }
+          // Forzar redimensión del canvas antes de encuadrar
+          mapa!.resize()
+          encuadrar(false)
+
+          // Re-encuadrar y redimensionar canvas al cambiar el tamaño del contenedor
+          resizeObserver = new ResizeObserver(() => {
+            if (mapaRef.current) {
+              mapaRef.current.resize()
+              encuadrar(false)
+            }
+          })
+          resizeObserver.observe(contenedorRef.current!)
         })
       } catch {
         setErrorMapa(true)
@@ -199,18 +229,92 @@ export default function MapaEnvio({ datos, className = '' }: MapaEnvioProps) {
     }).catch(() => setErrorMapa(true))
 
     return () => {
+      resizeObserver?.disconnect()
       mapa?.remove()
-      mapaRef.current = null
-      cargadoRef.current = false
+      mapaRef.current         = null
+      mlRef.current           = null
+      cargadoRef.current      = false
+      mapaListoRef.current    = false
+      markerActualRef.current = null
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tieneCoordenadas, JSON.stringify(datos)])
+  }, [tieneCoordenadas, encuadrar])
+
+  // Actualizar mapa imperativo al llegar eventos nuevos (Broadcast)
+  const datosKey     = JSON.stringify(datos)
+  const prevDatosKey = useRef(datosKey)
+  useEffect(() => {
+    if (datosKey === prevDatosKey.current) return
+    prevDatosKey.current = datosKey
+
+    const mapa = mapaRef.current
+    const ml   = mlRef.current
+    if (!mapa || !ml || !mapaListoRef.current) return
+
+    const d = datos
+
+    // Actualizar fuente recorrido
+    const puntosRecorridos: [number, number][] = []
+    if (d.origen) puntosRecorridos.push([d.origen.lng, d.origen.lat])
+    for (const ev of d.eventos) puntosRecorridos.push([ev.lng, ev.lat])
+
+    const srcRec = mapa.getSource('recorrido') as import('maplibre-gl').GeoJSONSource | undefined
+    if (srcRec) {
+      srcRec.setData({ type: 'Feature', geometry: { type: 'LineString', coordinates: puntosRecorridos }, properties: {} })
+    } else if (puntosRecorridos.length >= 2) {
+      mapa.addSource('recorrido', {
+        type: 'geojson',
+        data: { type: 'Feature', geometry: { type: 'LineString', coordinates: puntosRecorridos }, properties: {} },
+      })
+      mapa.addLayer({
+        id: 'recorrido-linea', type: 'line', source: 'recorrido',
+        paint: { 'line-color': NAVY, 'line-width': 3 },
+        layout: { 'line-cap': 'round' },
+      })
+    }
+
+    // Actualizar fuente pendiente
+    const ultimoEvIdx = d.eventos.length - 1
+    const posActual   = d.eventos.length > 0 ? d.eventos[ultimoEvIdx] : d.origen
+    const srcPend     = mapa.getSource('pendiente') as import('maplibre-gl').GeoJSONSource | undefined
+    if (posActual && d.destino) {
+      const coords: [number, number][] = [[posActual.lng, posActual.lat], [d.destino.lng, d.destino.lat]]
+      if (srcPend) {
+        srcPend.setData({ type: 'Feature', geometry: { type: 'LineString', coordinates: coords }, properties: {} })
+      } else {
+        mapa.addSource('pendiente', { type: 'geojson', data: { type: 'Feature', geometry: { type: 'LineString', coordinates: coords }, properties: {} } })
+        mapa.addLayer({
+          id: 'pendiente-linea', type: 'line', source: 'pendiente',
+          layout: { 'line-cap': 'round' },
+          paint: { 'line-color': NAVY, 'line-width': 2, 'line-dasharray': [2, 5] },
+        })
+      }
+    }
+
+    // Mover / crear pin naranja
+    const ubicActual = d.eventos.length > 0 ? d.eventos[ultimoEvIdx] : null
+    if (ubicActual) {
+      if (markerActualRef.current) {
+        markerActualRef.current.setLngLat([ubicActual.lng, ubicActual.lat])
+      } else {
+        const el = mkActualEl(ubicActual.etiqueta)
+        markerActualRef.current = new ml.Marker({ element: el, anchor: 'bottom' })
+          .setLngLat([ubicActual.lng, ubicActual.lat])
+          .addTo(mapa)
+      }
+    } else if (markerActualRef.current) {
+      markerActualRef.current.remove()
+      markerActualRef.current = null
+    }
+
+    // Animación suave al nuevo encuadre
+    encuadrar(true)
+  }, [datosKey, encuadrar, datos])
 
   if (!tieneCoordenadas) return null
 
   return (
     <div
-      className={`relative rounded-2xl overflow-hidden border border-border ${className}`}
+      className={`relative rounded-2xl overflow-hidden border border-border bg-[#D6E2EE] ${className}`}
       style={{ height: 300 }}
     >
       {errorMapa ? (
@@ -219,9 +323,27 @@ export default function MapaEnvio({ datos, className = '' }: MapaEnvioProps) {
         </div>
       ) : (
         <>
-          <div ref={contenedorRef} className="absolute inset-0 bg-[#D6E2EE]" />
+          {/* width/height 100% sobreviven cuando MapLibre inyecta position:relative */}
+          <div ref={contenedorRef} style={{ width: '100%', height: '100%' }} />
 
-          {/* Leyenda */}
+          {/* Botón "Centrar en mi paquete" — debajo de los botones de zoom */}
+          <button
+            type="button"
+            onClick={() => encuadrar(true)}
+            aria-label="Centrar en mi paquete"
+            title="Centrar en mi paquete"
+            style={{
+              position: 'absolute', top: 76, right: 10, zIndex: 2,
+              width: 29, height: 29, padding: 0,
+              background: '#fff', border: '1px solid rgba(0,0,0,0.3)',
+              borderRadius: 4, cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}
+          >
+            <LocateFixed size={14} color="#333" strokeWidth={1.75} />
+          </button>
+
+          {/* Leyenda (atribución la muestra el control compacto de MapLibre) */}
           <div
             className="absolute bottom-0 left-0 right-0 flex items-center gap-3 px-3 py-2 text-xs text-[#374151] flex-wrap"
             style={{ background: 'rgba(255,255,255,0.88)', backdropFilter: 'blur(4px)', zIndex: 1 }}
@@ -246,9 +368,6 @@ export default function MapaEnvio({ datos, className = '' }: MapaEnvioProps) {
                 {datos.destino.etiqueta ?? 'Destino'}
               </span>
             )}
-            <span className="ml-auto text-[10px] opacity-70">
-              © OpenFreeMap · © OpenStreetMap contributors
-            </span>
           </div>
         </>
       )}
