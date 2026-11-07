@@ -109,6 +109,102 @@ function Encabezado() {
   )
 }
 
+// ── Ilustración hero ─────────────────────────────────────────────────────────
+
+const RUTA_PATH = 'M 50 185 C 100 185, 340 20, 390 55'
+// Punto central de la ruta (t=0.5): (220, 107) — calculado analíticamente
+
+function IsotipoMini() {
+  return (
+    // Isotipo a escala 0.55 (44×37px), con centro en (0,0) del padre
+    <g transform="translate(-22, -18.7) scale(0.55)">
+      <path fill="#E8500A" d="M40 0 L8 18.48 L40 36.95 L72 18.48Z" />
+      <path fill="#FFFFFF" d="M0 18.48 L65 56 L65 27.14 L80 18.48 L80 59.34 L65 68 L15 39.14 L15 68 L0 59.34Z" />
+    </g>
+  )
+}
+
+function IlustracionHero() {
+  const [animar, setAnimar] = useState(() =>
+    typeof window !== 'undefined'
+      ? !window.matchMedia('(prefers-reduced-motion: reduce)').matches
+      : true
+  )
+
+  useEffect(() => {
+    const mq = window.matchMedia('(prefers-reduced-motion: reduce)')
+    const handler = (e: MediaQueryListEvent) => setAnimar(!e.matches)
+    mq.addEventListener('change', handler)
+    return () => mq.removeEventListener('change', handler)
+  }, [])
+
+  return (
+    <div
+      className="hidden lg:flex flex-col items-center gap-6 flex-1 basis-[380px] min-w-0"
+      aria-hidden="true"
+    >
+      <svg viewBox="0 0 440 220" className="w-full max-w-[420px]">
+        {/* Ruta punteada */}
+        <path
+          id="ruta-hero"
+          d={RUTA_PATH}
+          fill="none"
+          stroke="rgba(255,255,255,0.22)"
+          strokeWidth="2"
+          strokeDasharray="5 10"
+          strokeLinecap="round"
+        />
+
+        {/* Nodo: Origen */}
+        <circle cx="50" cy="185" r="9" fill="rgba(255,255,255,0.08)" stroke="rgba(255,255,255,0.4)" strokeWidth="1.5" />
+        <circle cx="50" cy="185" r="4" fill="rgba(255,255,255,0.45)" />
+
+        {/* Nodo: Tránsito */}
+        <circle cx="220" cy="107" r="7" fill="rgba(255,255,255,0.08)" stroke="rgba(255,255,255,0.3)" strokeWidth="1.5" />
+        <circle cx="220" cy="107" r="3" fill="rgba(255,255,255,0.35)" />
+
+        {/* Nodo: Destino con halo naranja */}
+        <circle cx="390" cy="55" r="26" fill="rgba(232,80,10,0.08)" />
+        <circle cx="390" cy="55" r="15" fill="rgba(232,80,10,0.18)" />
+        <rect x="381" y="46" width="18" height="18" rx="4" fill="rgba(255,255,255,0.08)" stroke="rgba(255,255,255,0.5)" strokeWidth="1.5" />
+        <rect x="385" y="50" width="10" height="10" rx="2.5" fill="rgba(255,255,255,0.45)" />
+
+        {/* Paquete (isotipo): animado o estático */}
+        {animar ? (
+          <g>
+            <IsotipoMini />
+            <animateMotion dur="6s" repeatCount="indefinite" calcMode="linear" rotate="0">
+              <mpath href="#ruta-hero" />
+            </animateMotion>
+          </g>
+        ) : (
+          // Sin animación: paquete en el punto intermedio de la ruta
+          <g transform="translate(220, 107)">
+            <IsotipoMini />
+          </g>
+        )}
+      </svg>
+
+      {/* Etapas genéricas */}
+      <div className="flex flex-wrap justify-center gap-2.5">
+        {[
+          { dot: 'bg-[#94A3B8]', label: 'Recibido' },
+          { dot: 'bg-accent', label: 'En tránsito' },
+          { dot: 'bg-[#34D399]', label: 'Entregado' },
+        ].map(({ dot, label }) => (
+          <span
+            key={label}
+            className="inline-flex items-center gap-1.5 text-[13px] text-[#C9D3E3] bg-white/8 px-3 py-1.5 rounded-full border border-white/12"
+          >
+            <span className={`w-2 h-2 rounded-full ${dot}`} />
+            {label}
+          </span>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 // ── Hero ──────────────────────────────────────────────────────────────────────
 
 function Hero() {
@@ -160,11 +256,11 @@ function Hero() {
         <circle cx="980" cy="520" r="18" fill="none" stroke="#E8500A" strokeOpacity="0.45" />
       </svg>
 
-      <div className="relative max-w-[1240px] mx-auto px-6 py-[88px] pb-24 flex flex-wrap gap-14 items-center">
+      <div className="relative max-w-[1240px] mx-auto px-6 pt-[88px] pb-24 flex flex-wrap gap-14 items-center">
         {/* Columna izquierda */}
         <div className="flex-1 basis-[520px] min-w-0 flex flex-col gap-6">
-          <p className="m-0 font-mono text-[13px] tracking-[0.14em] uppercase text-[#F4A97C]">
-            Envíos internacionales puerta a puerta
+          <p className="m-0 font-mono text-[13px] tracking-[0.14em] text-[#F4A97C]">
+            ENVÍOS INTERNACIONALES PUERTA A PUERTA
           </p>
           <h1
             className="m-0 font-display font-extrabold leading-[1.04] tracking-tight text-white"
@@ -223,63 +319,8 @@ function Hero() {
           </div>
         </div>
 
-        {/* Tarjeta de ejemplo */}
-        <div className="flex-1 basis-[380px] min-w-0 flex justify-center">
-          <div
-            aria-hidden="true"
-            role="presentation"
-            className="w-full max-w-[420px] bg-white text-ink rounded-[20px] p-[26px] flex flex-col gap-5 select-none"
-            style={{ boxShadow: '0 24px 60px rgba(4,14,32,0.35)' }}
-          >
-            {/* Guía + badge en vivo */}
-            <div className="flex justify-between items-center">
-              <span className="font-mono font-semibold text-lg text-navy whitespace-nowrap">NXP-9ZZN7G4</span>
-              <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#047857] bg-[#E7F7EF] px-2.5 py-1.5 rounded-full">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#10B981]" />
-                En vivo
-              </span>
-            </div>
-            {/* Estado */}
-            <div className="flex flex-col gap-1">
-              <span className="text-[13px] text-ink-muted">Estado actual</span>
-              <span className="font-display font-bold text-[28px] text-navy leading-tight">En aduana</span>
-              <span className="text-sm text-ink-muted">Detroit, MI, EE. UU. · hoy 10:42</span>
-            </div>
-            {/* Barra de progreso */}
-            <div className="flex flex-col gap-2">
-              <div className="flex gap-1">
-                {[true, true, true, 'activo', false, false, false, false].map((v, i) => (
-                  <span
-                    key={i}
-                    className="flex-1 h-1.5 rounded-full"
-                    style={{
-                      background: v === true ? '#0F2D5E' : v === 'activo' ? '#E8500A' : '#E3E8F0',
-                    }}
-                  />
-                ))}
-              </div>
-              <div className="flex justify-between text-xs text-ink-muted">
-                <span>Paso 4 de 8</span>
-                <span>Entrega estimada: [fecha]</span>
-              </div>
-            </div>
-            {/* Origen → destino */}
-            <div className="flex items-center gap-3 pt-4 border-t border-[#E3E8F0] text-sm">
-              <div className="flex flex-col">
-                <span className="text-xs text-ink-muted">Origen</span>
-                <strong className="font-semibold">Houston, TX</strong>
-              </div>
-              <svg className="flex-1" viewBox="0 0 40 12" aria-hidden="true">
-                <line x1="0" y1="6" x2="34" y2="6" stroke="#C3CCDA" strokeDasharray="3 3" />
-                <path d="M32 2 L38 6 L32 10" fill="none" stroke="#E8500A" strokeWidth="1.6" />
-              </svg>
-              <div className="flex flex-col text-right">
-                <span className="text-xs text-ink-muted">Destino</span>
-                <strong className="font-semibold">Toronto, ON</strong>
-              </div>
-            </div>
-          </div>
-        </div>
+        {/* Ilustración decorativa — sin datos reales */}
+        <IlustracionHero />
       </div>
     </section>
   )
