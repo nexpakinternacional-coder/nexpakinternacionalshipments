@@ -88,6 +88,11 @@ export const t = {
     resumen: 'Resumen',
     envios: 'Envíos',
     nuevoEnvio: 'Nuevo envío',
+    rotulos: 'Rótulos',
+    configuracion: 'Configuración del sitio',
+    auditoria: 'Auditoría',
+    usuarios: 'Usuarios',
+    buscarPlaceholder: 'Buscar guía, destinatario o ciudad',
   },
 
   dashboard: {
@@ -109,6 +114,19 @@ export const t = {
     cargandoResumen: 'Cargando resumen…',
     errorResumen: 'Error al cargar el resumen.',
     verListado: 'Ver listado',
+    // Nuevos en R3
+    enviosEnCurso: 'Envíos en curso por etapa',
+    activosFiltrar: (n: number) => `${n} activos · clic en una etapa para filtrar`,
+    creadosHoyDesglose: (exp: number, std: number) => `${exp} express · ${std} estándar`,
+    sinMovimiento5d: 'Sin movimiento +5 días',
+    porcentajeATiempo: (pct: number) => `${pct} % a tiempo`,
+    sinDatosPct: 'Sin datos de fecha estimada',
+    revisarBodega: 'Revisar con bodega',
+    enVivo: 'En vivo',
+    envios14dTitulo: 'Envíos creados · últimos 14 días',
+    promedioPorDia: (n: number) => `Promedio ${n} por día`,
+    verTodosAtencion: 'Ver todos',
+    sinMovimientoMotivo: 'Sin movimiento',
   },
 
   envios: {

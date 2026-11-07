@@ -35,13 +35,14 @@ export default function EnviosPage() {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
 
-  // Leer filtros iniciales desde URL (desde el dashboard)
+  // Leer filtros iniciales desde URL (desde el dashboard o buscador global)
   const estadoParamInicial = searchParams.get('estado') as EstadoEnvio | null
   const filtroParamInicial = searchParams.get('filtro') as 'excepciones' | null
   const actividadParam = searchParams.get('actividad') as FiltroActividad | null
+  const qParam = searchParams.get('q') ?? ''
 
-  const [busquedaInput, setBusquedaInput] = useState('')
-  const [busquedaFinal, setBusquedaFinal] = useState('')
+  const [busquedaInput, setBusquedaInput] = useState(qParam)
+  const [busquedaFinal, setBusquedaFinal] = useState(qParam)
   const [filtro, setFiltro] = useState<Filtro>(
     filtroParamInicial === 'excepciones'
       ? 'excepciones'
