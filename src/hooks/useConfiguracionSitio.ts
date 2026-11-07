@@ -77,9 +77,7 @@ export function ConfiguracionProvider({ children }: { children: ReactNode }) {
       setCargando(true)
       setError(false)
       try {
-        const { data, error: err } = await (
-          supabase.rpc as unknown as (fn: string) => Promise<{ data: unknown; error: { message: string } | null }>
-        )('configuracion_publica')
+        const { data, error: err } = await supabase.rpc('configuracion_publica')
 
         if (err || !data) {
           setError(true)

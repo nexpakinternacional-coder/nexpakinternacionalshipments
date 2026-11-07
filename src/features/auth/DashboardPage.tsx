@@ -467,9 +467,7 @@ export default function DashboardPage() {
   async function cargar(silencioso = false) {
     if (!silencioso) setCargando(true)
     setError('')
-    const { data, error: err } = await (
-      supabase.rpc as unknown as (fn: string) => Promise<{ data: unknown; error: { message: string } | null }>
-    )('resumen_dashboard')
+    const { data, error: err } = await supabase.rpc('resumen_dashboard')
     if (err) {
       setError(t.dashboard.errorResumen)
       setCargando(false)

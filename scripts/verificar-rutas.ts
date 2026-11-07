@@ -17,7 +17,8 @@ const RUTAS = [
   { ruta: '/admin/login',         nombre: 'Login admin' },
   { ruta: '/admin',               nombre: 'Dashboard (redirige a login)' },
   { ruta: '/admin/envios',        nombre: 'Envíos (redirige a login)' },
-  { ruta: '/admin/envios/nuevo',  nombre: 'Nuevo envío (redirige a login)' },
+  { ruta: '/admin/envios/nuevo',       nombre: 'Nuevo envío (redirige a login)' },
+  { ruta: '/admin/configuracion',      nombre: 'Configuración (redirige a login)' },
 ]
 
 // Errores de red que son comportamiento esperado: auth checks, WebSocket, 401/403

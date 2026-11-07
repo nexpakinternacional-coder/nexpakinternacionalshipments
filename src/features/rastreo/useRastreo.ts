@@ -49,10 +49,7 @@ export function useRastreo(guiaRaw: string) {
 
   const buscar = useCallback(async () => {
     try {
-      const { data, error } = await (supabase.rpc as unknown as (fn: string, args: Record<string, string>) => Promise<{ data: unknown; error: unknown }>)(
-        'rastrear_envio',
-        { p_guia: guia },
-      )
+      const { data, error } = await supabase.rpc('rastrear_envio', { p_guia: guia })
       if (error) {
         setEstadoHook('error')
         return
