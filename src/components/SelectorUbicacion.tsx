@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Loader, MapPin, Search, X } from 'lucide-react'
 import { supabase } from '../lib/supabase'
+import { cargarMapLibre } from '../lib/maplibre'
 
 export interface UbicacionSeleccionada {
   lat: number
@@ -31,13 +32,6 @@ interface ResultadoNominatim {
   lon: string
 }
 
-// Importación dinámica — mismo patrón que MapaEnvio
-async function cargarMapLibre() {
-  const ml = await import('maplibre-gl')
-  await import('maplibre-gl/dist/maplibre-gl.css')
-  return ml
-}
-
 const ESTILO_MAPA = 'https://tiles.openfreemap.org/styles/liberty'
 const NAVY   = '#0F2D5E'
 const ACCENT = '#E8500A'
@@ -56,6 +50,7 @@ export default function SelectorUbicacion({
   const [resultados, setResultados] = useState<ResultadoNominatim[]>([])
   const [buscando, setBuscando] = useState(false)
   const [errorBusqueda, setErrorBusqueda] = useState('')
+  const [errorMapa, setErrorMapa] = useState(false)
   const [etiquetaEditable, setEtiquetaEditable] = useState(valor?.etiqueta ?? '')
 
   const contenedorRef = useRef<HTMLDivElement>(null)
@@ -89,6 +84,7 @@ export default function SelectorUbicacion({
     cargarMapLibre().then((ml) => {
       if (!contenedorRef.current) return
 
+      try {
       const centro: [number, number] = valor
         ? [valor.lng, valor.lat]
         : recorrido.length > 0
@@ -149,7 +145,8 @@ export default function SelectorUbicacion({
           onChange(nueva)
         })
       })
-    })
+      } catch { setErrorMapa(true) }
+    }).catch(() => setErrorMapa(true))
 
     return () => {
       mapaRef.current?.remove()
@@ -383,23 +380,32 @@ export default function SelectorUbicacion({
         className="relative rounded-xl overflow-hidden border border-border bg-[#D6E2EE]"
         style={{ height: 280 }}
       >
-        <div ref={contenedorRef} className="absolute inset-0" />
-
-        {/* Instrucción */}
-        {!valor && (
-          <div
-            className="absolute top-3 left-3 right-16 bg-navy text-white text-xs px-3 py-2 rounded-lg pointer-events-none"
-          >
-            Arrastra el pin o haz clic en el mapa para ubicar
+        {errorMapa ? (
+          <div className="absolute inset-0 flex items-center justify-center bg-canvas text-sm text-ink-muted">
+            No pudimos cargar el mapa
           </div>
-        )}
+        ) : (
+          <>
+            <div ref={contenedorRef} className="absolute inset-0" />
 
-        <span
-          className="absolute left-2 bottom-1.5 text-[10px] text-[#374151]"
-          style={{ background: 'rgba(255,255,255,0.85)', padding: '2px 6px', borderRadius: 4 }}
-        >
-          © OpenFreeMap · © OpenStreetMap
-        </span>
+            {/* Instrucción */}
+            {!valor && (
+              <div
+                className="absolute top-3 left-3 right-16 bg-navy text-white text-xs px-3 py-2 rounded-lg pointer-events-none"
+                style={{ zIndex: 1 }}
+              >
+                Arrastra el pin o haz clic en el mapa para ubicar
+              </div>
+            )}
+
+            <span
+              className="absolute left-2 bottom-1.5 text-[10px] text-[#374151]"
+              style={{ background: 'rgba(255,255,255,0.85)', padding: '2px 6px', borderRadius: 4, zIndex: 1 }}
+            >
+              © OpenFreeMap · © OpenStreetMap
+            </span>
+          </>
+        )}
       </div>
 
       {/* Coordenadas + nombre visible al cliente */}

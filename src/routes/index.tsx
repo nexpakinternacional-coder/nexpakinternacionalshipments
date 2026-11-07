@@ -11,6 +11,7 @@ import EnviosPage from '../features/envios/EnviosPage'
 import NuevoEnvioPage from '../features/envios/NuevoEnvioPage'
 import DetalleEnvioPage from '../features/envios/DetalleEnvioPage'
 import MarcaPage from '../features/dev/MarcaPage'
+import MapaPage from '../features/dev/MapaPage'
 
 // Rutas de diagnóstico visual — solo en desarrollo, no llegan al build de producción
 const rutasDev = import.meta.env.DEV
@@ -25,6 +26,7 @@ const rutasDev = import.meta.env.DEV
         element: <PublicLayout />,
         children: [
           { path: '/dev/marca', element: <MarcaPage /> },
+          { path: '/dev/mapa', element: <MapaPage /> },
         ],
       },
     ]

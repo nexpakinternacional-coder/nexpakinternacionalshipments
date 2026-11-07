@@ -84,9 +84,12 @@ export type Database = {
           destinatario_direccion: string | null
           destinatario_documento: string | null
           destinatario_email: string | null
+          destinatario_estado: string | null
           destinatario_nombre: string
           destinatario_pais: string
           destinatario_telefono: string | null
+          destino_lat: number | null
+          destino_lng: number | null
           estado_actual: Database["public"]["Enums"]["estado_envio"]
           fecha_estimada_entrega: string | null
           guia: string
@@ -96,10 +99,13 @@ export type Database = {
           largo_cm: number | null
           moneda: string
           motivo_inactivacion: string | null
+          origen_lat: number | null
+          origen_lng: number | null
           peso_kg: number | null
           remitente_ciudad: string
           remitente_direccion: string | null
           remitente_email: string | null
+          remitente_estado: string | null
           remitente_nombre: string
           remitente_pais: string
           remitente_telefono: string | null
@@ -118,9 +124,12 @@ export type Database = {
           destinatario_direccion?: string | null
           destinatario_documento?: string | null
           destinatario_email?: string | null
+          destinatario_estado?: string | null
           destinatario_nombre: string
           destinatario_pais: string
           destinatario_telefono?: string | null
+          destino_lat?: number | null
+          destino_lng?: number | null
           estado_actual?: Database["public"]["Enums"]["estado_envio"]
           fecha_estimada_entrega?: string | null
           guia?: string
@@ -130,10 +139,13 @@ export type Database = {
           largo_cm?: number | null
           moneda?: string
           motivo_inactivacion?: string | null
+          origen_lat?: number | null
+          origen_lng?: number | null
           peso_kg?: number | null
           remitente_ciudad: string
           remitente_direccion?: string | null
           remitente_email?: string | null
+          remitente_estado?: string | null
           remitente_nombre: string
           remitente_pais: string
           remitente_telefono?: string | null
@@ -152,9 +164,12 @@ export type Database = {
           destinatario_direccion?: string | null
           destinatario_documento?: string | null
           destinatario_email?: string | null
+          destinatario_estado?: string | null
           destinatario_nombre?: string
           destinatario_pais?: string
           destinatario_telefono?: string | null
+          destino_lat?: number | null
+          destino_lng?: number | null
           estado_actual?: Database["public"]["Enums"]["estado_envio"]
           fecha_estimada_entrega?: string | null
           guia?: string
@@ -164,10 +179,13 @@ export type Database = {
           largo_cm?: number | null
           moneda?: string
           motivo_inactivacion?: string | null
+          origen_lat?: number | null
+          origen_lng?: number | null
           peso_kg?: number | null
           remitente_ciudad?: string
           remitente_direccion?: string | null
           remitente_email?: string | null
+          remitente_estado?: string | null
           remitente_nombre?: string
           remitente_pais?: string
           remitente_telefono?: string | null
@@ -189,11 +207,14 @@ export type Database = {
           envio_id: string
           estado: Database["public"]["Enums"]["estado_envio"]
           id: string
+          lat: number | null
+          lng: number | null
           motivo_anulacion: string | null
           nota_interna: string | null
           nota_publica: string | null
           ocurrido_en: string
           ubicacion: string | null
+          ubicacion_etiqueta: string | null
         }
         Insert: {
           anulado?: boolean
@@ -206,11 +227,14 @@ export type Database = {
           envio_id: string
           estado: Database["public"]["Enums"]["estado_envio"]
           id?: string
+          lat?: number | null
+          lng?: number | null
           motivo_anulacion?: string | null
           nota_interna?: string | null
           nota_publica?: string | null
           ocurrido_en?: string
           ubicacion?: string | null
+          ubicacion_etiqueta?: string | null
         }
         Update: {
           anulado?: boolean
@@ -223,11 +247,14 @@ export type Database = {
           envio_id?: string
           estado?: Database["public"]["Enums"]["estado_envio"]
           id?: string
+          lat?: number | null
+          lng?: number | null
           motivo_anulacion?: string | null
           nota_interna?: string | null
           nota_publica?: string | null
           ocurrido_en?: string
           ubicacion?: string | null
+          ubicacion_etiqueta?: string | null
         }
         Relationships: [
           {
@@ -260,6 +287,48 @@ export type Database = {
           id?: string
           nombre?: string
           rol?: Database["public"]["Enums"]["rol_usuario"]
+        }
+        Relationships: []
+      }
+      ubicaciones: {
+        Row: {
+          activa: boolean
+          ciudad: string | null
+          created_at: string
+          estado: string | null
+          etiqueta: string
+          id: string
+          lat: number | null
+          lng: number | null
+          pais: string | null
+          ultimo_uso: string
+          veces_usada: number
+        }
+        Insert: {
+          activa?: boolean
+          ciudad?: string | null
+          created_at?: string
+          estado?: string | null
+          etiqueta: string
+          id?: string
+          lat?: number | null
+          lng?: number | null
+          pais?: string | null
+          ultimo_uso?: string
+          veces_usada?: number
+        }
+        Update: {
+          activa?: boolean
+          ciudad?: string | null
+          created_at?: string
+          estado?: string | null
+          etiqueta?: string
+          id?: string
+          lat?: number | null
+          lng?: number | null
+          pais?: string | null
+          ultimo_uso?: string
+          veces_usada?: number
         }
         Relationships: []
       }
