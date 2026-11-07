@@ -330,7 +330,7 @@ function Hero() {
 
 function AccesosRapidos() {
   return (
-    <section aria-label="Accesos rápidos" className="max-w-[1240px] mx-auto px-6 relative -mt-10">
+    <section aria-label="Accesos rápidos" className="max-w-[1240px] mx-auto px-6 pt-10 pb-6">
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {[
           {
