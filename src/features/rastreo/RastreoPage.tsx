@@ -2,9 +2,9 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import {
   AlertTriangle,
-  ArrowLeft,
-  CheckCircle,
   Copy,
+  CheckCircle,
+  MessageCircle,
   Share2,
   WifiOff,
 } from 'lucide-react'
@@ -19,18 +19,10 @@ import {
 import { t } from '../../textos/es'
 import { useRastreo, type DatoRastreo } from './useRastreo'
 import MapaEnvio, { type DatosMapa } from '../../components/MapaEnvio'
+import Logo from '../../components/Logo'
+import { urlWhatsApp, mensajeWhatsAppGuia } from '../../config/empresa'
 
-// ── Helpers ─────────────────────────────────────────────────────────────────
-
-function tiempoRelativo(fecha: Date): string {
-  const segundos = Math.floor((Date.now() - fecha.getTime()) / 1000)
-  if (segundos < 90) return 'hace menos de 1 min'
-  const minutos = Math.floor(segundos / 60)
-  if (minutos === 1) return 'hace 1 min'
-  if (minutos < 60) return `hace ${minutos} min`
-  const horas = Math.floor(minutos / 60)
-  return horas === 1 ? 'hace 1 hora' : `hace ${horas} horas`
-}
+// ── Helpers ──────────────────────────────────────────────────────────────────
 
 function datosMapa(d: DatoRastreo): DatosMapa {
   return {
@@ -50,180 +42,178 @@ function datosMapa(d: DatoRastreo): DatosMapa {
   }
 }
 
-// ── Skeletons ────────────────────────────────────────────────────────────────
+function siguienteEtiqueta(estado: EstadoEnvio): string | null {
+  const idx = FLUJO_NORMAL.indexOf(estado)
+  if (idx === -1 || idx >= FLUJO_NORMAL.length - 1) return null
+  return ESTADOS[FLUJO_NORMAL[idx + 1]].etiqueta
+}
 
-function SkeletonBloque({ className = '' }: { className?: string }) {
+// ── Skeletons ─────────────────────────────────────────────────────────────────
+
+function Skeleton({ className = '' }: { className?: string }) {
+  return <div className={`bg-white/15 rounded-lg animate-pulse ${className}`} />
+}
+
+function SkeletonSuperior() {
   return (
-    <div className={`bg-border/60 rounded-lg animate-pulse ${className}`} />
+    <div className="bg-navy text-white px-5 py-6 flex flex-col gap-5">
+      <Skeleton className="h-6 w-36" />
+      <div className="flex flex-col gap-2">
+        <Skeleton className="h-4 w-16" />
+        <Skeleton className="h-10 w-48" />
+        <Skeleton className="h-4 w-40" />
+      </div>
+      <Skeleton className="h-6 w-full rounded-full" />
+    </div>
   )
 }
 
-function SkeletonRastreo() {
+function SkeletonCuerpo() {
   return (
-    <div className="space-y-4 py-6">
-      <SkeletonBloque className="h-8 w-48" />
-      <SkeletonBloque className="h-24 w-full rounded-xl" />
-      <SkeletonBloque className="h-12 w-full rounded-xl" />
-      <SkeletonBloque className="h-32 w-full rounded-xl" />
-      <div className="space-y-3 pt-2">
+    <div className="px-4 py-4 flex flex-col gap-4">
+      <div className="bg-surface border border-border-subtle rounded-2xl overflow-hidden h-[300px] animate-pulse" />
+      <div className="bg-surface border border-border-subtle rounded-2xl p-[18px] h-[70px] animate-pulse" />
+      <div className="bg-surface border border-border-subtle rounded-2xl p-5 flex flex-col gap-4">
         {[1, 2, 3].map(i => (
-          <SkeletonBloque key={i} className="h-16 w-full rounded-xl" />
+          <div key={i} className="flex gap-4">
+            <div className="w-3.5 h-3.5 mt-1 rounded-full bg-border-subtle flex-shrink-0" />
+            <div className="flex flex-col gap-1 flex-1">
+              <div className="h-4 bg-border-subtle rounded w-32 animate-pulse" />
+              <div className="h-3 bg-border-subtle rounded w-24 animate-pulse" />
+            </div>
+          </div>
         ))}
       </div>
     </div>
   )
 }
 
-// ── Barra de progreso ────────────────────────────────────────────────────────
+// ── Superior: guía + progreso ─────────────────────────────────────────────────
 
-function BarraProgreso({ estado }: { estado: EstadoEnvio }) {
-  const esExcepcion = ESTADOS_EXCEPCION.includes(estado)
-  const idxActual = esExcepcion ? -1 : FLUJO_NORMAL.indexOf(estado)
-  // Si excepción, mostrar hasta el último paso del flujo normal (como "detenido")
-  const idxMostrar = esExcepcion ? FLUJO_NORMAL.length - 1 : idxActual
-
-  return (
-    <div className="bg-surface border border-border rounded-xl p-4 mb-4">
-      <p className="text-xs font-semibold text-ink-muted uppercase tracking-wide mb-3">
-        {t.rastreo.estadoActual}
-      </p>
-
-      {/* Mobile: barra de progreso lineal */}
-      <div className="sm:hidden">
-        <div className="flex justify-between text-xs text-ink-muted mb-2">
-          <span>
-            Paso {esExcepcion ? '?' : idxActual + 1} de {FLUJO_NORMAL.length}
-          </span>
-          <span>{ESTADOS[estado].etiqueta}</span>
-        </div>
-        <div className="h-2 bg-border rounded-full overflow-hidden">
-          <div
-            className={`h-full rounded-full transition-all duration-500 ${
-              esExcepcion ? 'bg-red-400' : 'bg-navy'
-            }`}
-            style={{
-              width: esExcepcion
-                ? '100%'
-                : `${((idxActual + 1) / FLUJO_NORMAL.length) * 100}%`,
-            }}
-          />
-        </div>
-      </div>
-
-      {/* Desktop: pasos con círculos */}
-      <div className="hidden sm:flex items-center overflow-x-auto pb-1" style={{ gap: 0 }}>
-        {FLUJO_NORMAL.map((e, i) => {
-          const completado = idxActual > i || (idxActual === -1 && idxMostrar > i)
-          const actual = idxActual === i
-          const esExcepActual = esExcepcion && i === idxMostrar
-
-          return (
-            <div key={e} className="flex items-center flex-1 min-w-0">
-              {/* Línea izquierda */}
-              {i > 0 && (
-                <div
-                  className={`flex-1 h-0.5 ${completado || esExcepActual ? 'bg-navy' : 'bg-border'}`}
-                />
-              )}
-              {/* Círculo */}
-              <div
-                title={ESTADOS[e].etiqueta}
-                className={`flex-shrink-0 w-6 h-6 rounded-full border-2 transition-all flex items-center justify-center ${
-                  esExcepActual
-                    ? 'border-red-400 bg-red-50'
-                    : actual
-                    ? 'border-navy bg-navy'
-                    : completado
-                    ? 'border-navy bg-navy'
-                    : 'border-border bg-surface'
-                }`}
-              >
-                {(completado || actual) && !esExcepActual && (
-                  <div className="w-2 h-2 rounded-full bg-white" />
-                )}
-                {esExcepActual && (
-                  <div className="w-2 h-2 rounded-full bg-red-400" />
-                )}
-              </div>
-              {/* Línea derecha (solo si no es último) */}
-              {i < FLUJO_NORMAL.length - 1 && (
-                <div
-                  className={`flex-1 h-0.5 ${completado ? 'bg-navy' : 'bg-border'}`}
-                />
-              )}
-            </div>
-          )
-        })}
-      </div>
-
-      {/* Desktop: inicio · paso actual · fin */}
-      <div className="hidden sm:flex justify-between items-baseline mt-2.5">
-        <span className="text-[10px] text-ink-muted">{ESTADOS[FLUJO_NORMAL[0]].etiqueta}</span>
-        <span className="text-xs font-semibold text-navy">
-          {ESTADOS[estado].etiqueta}
-          {!esExcepcion && (
-            <span className="font-normal text-ink-muted">
-              {' · '}Paso {idxActual + 1} de {FLUJO_NORMAL.length}
-            </span>
-          )}
-        </span>
-        <span className="text-[10px] text-ink-muted">{ESTADOS[FLUJO_NORMAL[FLUJO_NORMAL.length - 1]].etiqueta}</span>
-      </div>
-    </div>
-  )
-}
-
-// ── Estado grande ────────────────────────────────────────────────────────────
-
-function TarjetaEstado({
+function SeccionSuperior({
   datos,
   enVivo,
-  ultimaActualizacion,
   animando,
 }: {
   datos: DatoRastreo
   enVivo: boolean
-  ultimaActualizacion: Date | null
   animando: boolean
 }) {
-  const info = ESTADOS[datos.estado_actual]
+  const [copiado, setCopiado] = useState(false)
+  const [enlaceCopiado, setEnlaceCopiado] = useState(false)
+
+  const esExcepcion = ESTADOS_EXCEPCION.includes(datos.estado_actual)
+  const idxActual = esExcepcion ? -1 : FLUJO_NORMAL.indexOf(datos.estado_actual)
   const ultimoEvento = datos.eventos[datos.eventos.length - 1]
+  const infoEstado = ESTADOS[datos.estado_actual]
+  const siguiente = siguienteEtiqueta(datos.estado_actual)
+
+  async function copiarGuia() {
+    await navigator.clipboard.writeText(formatearGuia(datos.guia))
+    setCopiado(true)
+    setTimeout(() => setCopiado(false), 2000)
+  }
+
+  async function compartir() {
+    const url = `${window.location.origin}/rastreo/${datos.guia}`
+    if (navigator.share) {
+      try { await navigator.share({ title: `Guía ${formatearGuia(datos.guia)} · Nexpak`, url }); return } catch {}
+    }
+    await navigator.clipboard.writeText(url)
+    setEnlaceCopiado(true)
+    setTimeout(() => setEnlaceCopiado(false), 2000)
+  }
 
   return (
-    <div
-      className={`bg-surface border border-border rounded-xl p-5 mb-4 transition-all duration-300 ${
-        animando ? 'ring-2 ring-accent/40 scale-[1.005]' : ''
+    <section
+      className={`bg-navy text-white px-5 pb-6 pt-4 flex flex-col gap-[18px] transition-all duration-300 ${
+        animando ? 'ring-2 ring-accent/40' : ''
       }`}
     >
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex-1 min-w-0">
-          <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-semibold ${info.colorFondo} ${info.colorTexto} mb-3`}>
-            <span>{info.etiqueta}</span>
-          </div>
-          {ultimoEvento?.ubicacion && (
-            <p className="text-sm text-ink-muted mb-1">{ultimoEvento.ubicacion}</p>
-          )}
-          {ultimoEvento && (
-            <p className="text-xs text-ink-muted">
-              {formatearFechaHora(ultimoEvento.ocurrido_en)}
-            </p>
-          )}
-        </div>
-        {/* Indicador en vivo */}
-        <div className="flex-shrink-0 text-right">
-          {enVivo ? (
-            <span className="inline-flex items-center gap-1.5 text-xs font-medium text-green-600 bg-green-50 border border-green-200 px-2 py-1 rounded-full">
-              <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
-              {t.rastreo.enVivo}
-            </span>
-          ) : ultimaActualizacion ? (
-            <span className="text-xs text-ink-muted">
-              {t.rastreo.actualizadoHace(tiempoRelativo(ultimaActualizacion))}
-            </span>
-          ) : null}
+      {/* Guía + botones */}
+      <div className="flex items-center justify-between gap-3">
+        <span className="font-mono text-xl font-semibold tracking-[0.04em] whitespace-nowrap">
+          {formatearGuia(datos.guia)}
+        </span>
+        <div className="flex gap-2 flex-shrink-0">
+          <button
+            type="button"
+            onClick={copiarGuia}
+            aria-label={copiado ? t.rastreo.guiaCopiada : t.rastreo.copiarGuia}
+            className="w-11 h-11 rounded-[10px] border border-white/22 bg-transparent text-white flex items-center justify-center hover:bg-white/10 transition-colors cursor-pointer"
+          >
+            {copiado
+              ? <CheckCircle size={18} strokeWidth={1.8} aria-hidden="true" />
+              : <Copy size={18} strokeWidth={1.8} aria-hidden="true" />}
+          </button>
+          <button
+            type="button"
+            onClick={compartir}
+            aria-label={enlaceCopiado ? t.rastreo.enlaceCopiado : t.rastreo.compartir}
+            className="w-11 h-11 rounded-[10px] border border-white/22 bg-transparent text-white flex items-center justify-center hover:bg-white/10 transition-colors cursor-pointer"
+          >
+            {enlaceCopiado
+              ? <CheckCircle size={18} strokeWidth={1.8} aria-hidden="true" />
+              : <Share2 size={18} strokeWidth={1.8} aria-hidden="true" />}
+          </button>
         </div>
       </div>
-    </div>
+
+      {/* Estado */}
+      <div className="flex flex-col gap-1.5">
+        {enVivo && (
+          <span className="inline-flex self-start items-center gap-1.5 text-xs font-semibold text-[#A7F3D0] uppercase tracking-wide">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#34D399]" />
+            En vivo
+          </span>
+        )}
+        <h1
+          className="m-0 font-display font-extrabold leading-[1.05] text-white"
+          style={{ fontSize: 'clamp(28px, 8vw, 40px)' }}
+        >
+          {infoEstado.etiqueta}
+        </h1>
+        {ultimoEvento?.ubicacion && (
+          <span className="text-[15px] text-[#C9D3E3]">
+            {ultimoEvento.ubicacion}
+            {ultimoEvento.ocurrido_en && (
+              <> · {formatearFechaHora(ultimoEvento.ocurrido_en)}</>
+            )}
+          </span>
+        )}
+      </div>
+
+      {/* Barra de progreso segmentada */}
+      <div className="flex flex-col gap-2">
+        <div className="flex gap-1">
+          {FLUJO_NORMAL.map((_, i) => {
+            const completado = !esExcepcion && i < idxActual
+            const actual = !esExcepcion && i === idxActual
+            return (
+              <span
+                key={i}
+                className="flex-1 h-1.5 rounded-full"
+                style={{
+                  background: completado
+                    ? '#FFFFFF'
+                    : actual
+                    ? '#E8500A'
+                    : 'rgba(255,255,255,0.18)',
+                }}
+              />
+            )
+          })}
+        </div>
+        <div className="flex justify-between text-[13px] text-[#C9D3E3]">
+          <span>
+            {esExcepcion
+              ? infoEstado.etiqueta
+              : `Paso ${idxActual + 1} de ${FLUJO_NORMAL.length}`}
+          </span>
+          {siguiente && !esExcepcion && <span>Siguiente: {siguiente}</span>}
+        </div>
+      </div>
+    </section>
   )
 }
 
@@ -231,7 +221,7 @@ function TarjetaEstado({
 
 function BannerExcepcion() {
   return (
-    <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-4 flex gap-3">
+    <div className="mx-4 mt-4 bg-amber-50 border border-amber-200 rounded-2xl p-4 flex gap-3">
       <AlertTriangle size={20} className="text-amber-600 flex-shrink-0 mt-0.5" strokeWidth={2} />
       <div>
         <p className="text-sm font-semibold text-amber-800 mb-0.5">
@@ -249,81 +239,76 @@ function BannerExcepcion() {
   )
 }
 
-// ── Info ruta ────────────────────────────────────────────────────────────────
+// ── Tarjeta info ──────────────────────────────────────────────────────────────
 
-function InfoRuta({ datos }: { datos: DatoRastreo }) {
+function TarjetaInfo({ datos }: { datos: DatoRastreo }) {
   return (
-    <div className="bg-surface border border-border rounded-xl p-5 mb-4 grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
-      <div>
-        <p className="text-xs text-ink-muted mb-0.5">{t.rastreo.origen}</p>
-        <p className="font-medium text-ink text-sm">{datos.origen_ciudad}</p>
-        <p className="text-xs text-ink-muted">{datos.origen_pais}</p>
+    <div className="mx-4 mt-4 bg-surface border border-border-subtle rounded-2xl p-[18px] grid grid-cols-3 gap-2.5">
+      <div className="flex flex-col gap-0.5">
+        <span className="text-xs text-ink-muted">Para</span>
+        <strong className="text-sm font-semibold truncate">{datos.destinatario}</strong>
       </div>
-      <div>
-        <p className="text-xs text-ink-muted mb-0.5">{t.rastreo.destino}</p>
-        <p className="font-medium text-ink text-sm">{datos.destino_ciudad}</p>
-        <p className="text-xs text-ink-muted">{datos.destino_pais}</p>
-      </div>
-      <div>
-        <p className="text-xs text-ink-muted mb-0.5">{t.rastreo.destinatario}</p>
-        <p className="font-medium text-ink text-sm">{datos.destinatario}</p>
-        <p className="text-xs text-ink-muted">
-          {datos.tipo_servicio === 'express'
-            ? t.rastreo.servicioExpress
-            : t.rastreo.servicioEstandar}
-        </p>
+      <div className="flex flex-col gap-0.5">
+        <span className="text-xs text-ink-muted">Servicio</span>
+        <strong className="text-sm font-semibold">
+          {datos.tipo_servicio === 'express' ? t.rastreo.servicioExpress : t.rastreo.servicioEstandar}
+        </strong>
       </div>
       {datos.fecha_estimada_entrega && (
-        <div>
-          <p className="text-xs text-ink-muted mb-0.5">{t.rastreo.fechaEstimada}</p>
-          <p className="font-medium text-ink text-sm">
-            {formatearSoloFecha(datos.fecha_estimada_entrega)}
-          </p>
+        <div className="flex flex-col gap-0.5">
+          <span className="text-xs text-ink-muted">Entrega est.</span>
+          <strong className="text-sm font-semibold">{formatearSoloFecha(datos.fecha_estimada_entrega)}</strong>
         </div>
       )}
     </div>
   )
 }
 
-// ── Historial ────────────────────────────────────────────────────────────────
+// ── Historial ─────────────────────────────────────────────────────────────────
 
 function Historial({ eventos }: { eventos: DatoRastreo['eventos'] }) {
   if (eventos.length === 0) return null
+  const invertidos = [...eventos].reverse()
+  const idxActual = 0 // el primer elemento tras invertir es el más reciente
 
   return (
-    <div className="bg-surface border border-border rounded-xl p-5">
-      <h2 className="text-xs font-semibold text-ink-muted uppercase tracking-wide mb-5">
+    <div className="mx-4 mt-4 bg-surface border border-border-subtle rounded-2xl p-5">
+      <h2 className="m-0 mb-3 text-[13px] font-semibold tracking-[0.1em] uppercase text-ink-muted">
         {t.rastreo.historial}
       </h2>
       <div>
-        {[...eventos].reverse().map((ev, idx) => {
+        {invertidos.map((ev, idx) => {
+          const esActual = idx === idxActual
           const info = ESTADOS[ev.estado]
           return (
-            <div key={idx} className="flex gap-4">
+            <div key={idx} className="flex gap-3.5">
+              {/* Línea de tiempo */}
               <div className="flex flex-col items-center flex-shrink-0">
-                <div
-                  className={`w-3 h-3 rounded-full flex-shrink-0 mt-0.5 ring-2 ring-surface ${info.colorFondo}`}
+                <span
+                  className="w-3.5 h-3.5 rounded-full flex-shrink-0"
+                  style={{
+                    background: esActual ? '#E8500A' : '#0F2D5E',
+                    boxShadow: esActual ? '0 0 0 4px #FDEEE6' : undefined,
+                  }}
                 />
-                {idx < eventos.length - 1 && (
-                  <div className="w-px flex-1 bg-border my-1" />
+                {idx < invertidos.length - 1 && (
+                  <span className="flex-1 w-0.5 bg-[#E3E8F0] my-1" />
                 )}
               </div>
-              <div className={`min-w-0 flex-1 ${idx < eventos.length - 1 ? 'pb-5' : ''}`}>
-                <div className="flex items-center gap-2 flex-wrap mb-1">
-                  <span
-                    className={`inline-flex items-center rounded-full text-xs font-medium px-2 py-0.5 gap-1 ${info.colorFondo} ${info.colorTexto}`}
-                  >
-                    {info.etiqueta}
-                  </span>
-                  <span className="text-xs text-ink-muted">
-                    {formatearFechaHora(ev.ocurrido_en)}
-                  </span>
-                </div>
-                {ev.ubicacion && (
-                  <p className="text-sm text-ink mt-0.5">{ev.ubicacion}</p>
-                )}
+              {/* Contenido */}
+              <div className={`min-w-0 flex-1 flex flex-col gap-1 ${idx < invertidos.length - 1 ? 'pb-5' : ''}`}>
+                <strong
+                  className="text-base font-semibold"
+                  style={{ color: esActual ? '#0F2D5E' : '#111827' }}
+                >
+                  {info.etiqueta}
+                </strong>
+                <span className="text-[13px] text-ink-muted">
+                  {ev.ubicacion && <>{ev.ubicacion} · </>}
+                  {formatearFechaHora(ev.ocurrido_en)}
+                </span>
                 {ev.nota_publica && (
-                  <p className="text-sm text-ink-muted mt-0.5">{ev.nota_publica}</p>
+                  <span className="text-sm text-[#374151] leading-relaxed mt-0.5">{ev.nota_publica}</span>
                 )}
               </div>
             </div>
@@ -334,66 +319,7 @@ function Historial({ eventos }: { eventos: DatoRastreo['eventos'] }) {
   )
 }
 
-// ── Cabecera con guía y botones ──────────────────────────────────────────────
-
-function GuiaHeader({ guia }: { guia: string }) {
-  const [copiado, setCopiado] = useState(false)
-  const [enlaceCopiado, setEnlaceCopiado] = useState(false)
-
-  async function copiarGuia() {
-    await navigator.clipboard.writeText(formatearGuia(guia))
-    setCopiado(true)
-    setTimeout(() => setCopiado(false), 2000)
-  }
-
-  async function compartir() {
-    const url = `${window.location.origin}/rastreo/${guia}`
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: `Guía ${formatearGuia(guia)} · Nexpak`,
-          url,
-        })
-        return
-      } catch {}
-    }
-    await navigator.clipboard.writeText(url)
-    setEnlaceCopiado(true)
-    setTimeout(() => setEnlaceCopiado(false), 2000)
-  }
-
-  return (
-    <div className="flex items-center justify-between gap-3 mb-4">
-      <span className="font-mono text-xl font-semibold text-navy tracking-widest whitespace-nowrap">
-        {formatearGuia(guia)}
-      </span>
-      <div className="flex items-center gap-1.5 flex-shrink-0">
-        <button
-          onClick={copiarGuia}
-          aria-label={t.rastreo.copiarGuia}
-          className="flex items-center gap-1.5 px-2 sm:px-3 py-1.5 border border-border rounded-lg text-xs text-ink hover:bg-canvas transition-colors cursor-pointer"
-        >
-          {copiado ? (
-            <CheckCircle size={13} className="text-green-500" />
-          ) : (
-            <Copy size={13} />
-          )}
-          <span className="hidden sm:inline">{copiado ? t.rastreo.guiaCopiada : t.rastreo.copiarGuia}</span>
-        </button>
-        <button
-          onClick={compartir}
-          aria-label={t.rastreo.compartir}
-          className="flex items-center gap-1.5 px-2 sm:px-3 py-1.5 border border-border rounded-lg text-xs text-ink hover:bg-canvas transition-colors cursor-pointer"
-        >
-          <Share2 size={13} />
-          <span className="hidden sm:inline">{enlaceCopiado ? t.rastreo.enlaceCopiado : t.rastreo.compartir}</span>
-        </button>
-      </div>
-    </div>
-  )
-}
-
-// ── Estado no encontrado ─────────────────────────────────────────────────────
+// ── Estado no encontrado ──────────────────────────────────────────────────────
 
 function NoEncontrado() {
   const navigate = useNavigate()
@@ -412,23 +338,23 @@ function NoEncontrado() {
   }
 
   return (
-    <div className="text-center py-12">
-      <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-border/50 mb-5">
+    <div className="flex flex-col items-center text-center py-16 px-6">
+      <div className="w-16 h-16 rounded-2xl bg-icon-bg flex items-center justify-center mb-5">
         <WifiOff size={28} strokeWidth={1.5} className="text-ink-muted" />
       </div>
       <h1 className="text-xl font-semibold text-ink mb-2">{t.rastreo.noEncontrado}</h1>
-      <p className="text-sm text-ink-muted mb-8">{t.rastreo.noEncontradoDetalle}</p>
-      <form onSubmit={handleBuscar} className="max-w-xs mx-auto flex gap-2">
+      <p className="text-sm text-ink-muted mb-8 max-w-xs">{t.rastreo.noEncontradoDetalle}</p>
+      <form onSubmit={handleBuscar} className="w-full max-w-xs flex gap-2">
         <input
           type="text"
           value={inputGuia}
           onChange={e => setInputGuia(formatarInput(e.target.value))}
           placeholder={t.rastreo.placeholder}
-          className="flex-1 font-mono text-sm text-center px-3 py-2.5 border border-border rounded-lg bg-surface focus:outline-none focus:border-navy"
+          className="flex-1 font-mono text-sm text-center px-3 py-3 border border-border rounded-xl bg-surface focus:outline-none focus:border-navy"
         />
         <button
           type="submit"
-          className="px-4 py-2.5 bg-accent-strong text-white text-sm font-semibold rounded-lg hover:bg-accent cursor-pointer transition-colors"
+          className="px-4 py-3 bg-accent-strong text-white text-sm font-semibold rounded-xl hover:bg-accent cursor-pointer transition-colors"
         >
           {t.rastreo.botonRastrear}
         </button>
@@ -444,14 +370,14 @@ function NoEncontrado() {
 
 function ErrorConexion({ onReintentar }: { onReintentar: () => void }) {
   return (
-    <div className="text-center py-12">
-      <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-border/50 mb-5">
+    <div className="flex flex-col items-center text-center py-16 px-6">
+      <div className="w-16 h-16 rounded-2xl bg-icon-bg flex items-center justify-center mb-5">
         <WifiOff size={28} strokeWidth={1.5} className="text-ink-muted" />
       </div>
-      <p className="text-ink-muted mb-4 text-sm">{t.rastreo.errorConexion}</p>
+      <p className="text-ink-muted mb-6 text-sm">{t.rastreo.errorConexion}</p>
       <button
         onClick={onReintentar}
-        className="px-5 py-2.5 bg-navy text-white text-sm font-semibold rounded-lg hover:bg-navy/90 cursor-pointer transition-colors"
+        className="px-5 py-3 bg-navy text-white text-sm font-semibold rounded-xl hover:bg-navy/90 cursor-pointer transition-colors"
       >
         {t.rastreo.reintentar}
       </button>
@@ -459,12 +385,40 @@ function ErrorConexion({ onReintentar }: { onReintentar: () => void }) {
   )
 }
 
-// ── Componente principal ─────────────────────────────────────────────────────
+// ── Layout principal ──────────────────────────────────────────────────────────
+
+function LayoutRastreo({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="min-h-screen flex flex-col bg-canvas">
+      {/* Cabecera */}
+      <header className="bg-navy px-5 h-[60px] flex items-center justify-between flex-shrink-0">
+        <Link
+          to="/"
+          aria-label="Nexpak, inicio"
+          className="flex-shrink-0"
+        >
+          <Logo variante="horizontal" tono="blanco" alto={26} alt="" />
+        </Link>
+        <Link
+          to="/"
+          className="min-h-[44px] flex items-center text-sm text-[#DCE3EE] hover:text-white transition-colors"
+        >
+          Otra guía
+        </Link>
+      </header>
+      {/* Contenido */}
+      <main className="flex-1 max-w-[560px] w-full mx-auto pb-8">
+        {children}
+      </main>
+    </div>
+  )
+}
+
+// ── Componente principal ──────────────────────────────────────────────────────
 
 export default function RastreoPage() {
   const { guia: guiaParam = '' } = useParams<{ guia: string }>()
-  const { datos, estadoHook, ultimaActualizacion, enVivo, animando, buscar } =
-    useRastreo(guiaParam)
+  const { datos, estadoHook, enVivo, animando, buscar } = useRastreo(guiaParam)
 
   // SEO dinámico
   useEffect(() => {
@@ -475,7 +429,6 @@ export default function RastreoPage() {
         'content',
         t.rastreo.seoDescResultado(guiaFmt),
       )
-      // Open Graph
       setOgTag('og:title', `Guía ${guiaFmt} · Nexpak`)
       setOgTag('og:description', t.rastreo.seoDescResultado(guiaFmt))
       setOgTag('og:url', window.location.href)
@@ -484,7 +437,6 @@ export default function RastreoPage() {
     }
   }, [datos])
 
-  // noindex en páginas de rastreo
   useEffect(() => {
     let meta = document.querySelector<HTMLMetaElement>('meta[name="robots"]')
     if (!meta) {
@@ -496,60 +448,63 @@ export default function RastreoPage() {
     return () => meta?.remove()
   }, [])
 
+  if (estadoHook === 'cargando') {
+    return (
+      <LayoutRastreo>
+        <SkeletonSuperior />
+        <SkeletonCuerpo />
+      </LayoutRastreo>
+    )
+  }
+
+  if (estadoHook === 'no_encontrado') {
+    return (
+      <LayoutRastreo>
+        <NoEncontrado />
+      </LayoutRastreo>
+    )
+  }
+
+  if (estadoHook === 'error') {
+    return (
+      <LayoutRastreo>
+        <ErrorConexion onReintentar={buscar} />
+      </LayoutRastreo>
+    )
+  }
+
+  if (estadoHook !== 'encontrado' || !datos) return null
+
+  const esExcepcion = ESTADOS_EXCEPCION.includes(datos.estado_actual)
+
   return (
-    <>
-      {/* Cabecera de navegación */}
-      <header className="sticky top-0 z-10 bg-canvas/95 backdrop-blur-sm border-b border-border">
-        <div className="max-w-2xl mx-auto px-4 h-14 flex items-center justify-between">
-          <Link
-            to="/"
-            className="flex items-center gap-2 text-ink-muted hover:text-ink transition-colors cursor-pointer"
-            aria-label="Volver al inicio"
-          >
-            <ArrowLeft size={18} />
-            <span className="text-sm">{t.rastreo.volverBuscar}</span>
-          </Link>
-          <span className="text-base font-semibold text-navy">{t.app.nombre}</span>
-          <div className="w-24" /> {/* balance */}
-        </div>
-      </header>
+    <LayoutRastreo>
+      {/* Bloque superior navy */}
+      <SeccionSuperior datos={datos} enVivo={enVivo} animando={animando} />
 
-      <main className="max-w-2xl mx-auto px-4 py-5">
-        {estadoHook === 'cargando' && <SkeletonRastreo />}
+      {/* Banner excepción justo debajo del bloque superior */}
+      {esExcepcion && <BannerExcepcion />}
 
-        {estadoHook === 'no_encontrado' && <NoEncontrado />}
+      {/* Mapa */}
+      <MapaEnvio datos={datosMapa(datos)} className="mx-4 mt-4" />
 
-        {estadoHook === 'error' && <ErrorConexion onReintentar={buscar} />}
+      {/* Info destinatario/servicio/entrega */}
+      <TarjetaInfo datos={datos} />
 
-        {estadoHook === 'encontrado' && datos && (
-          <>
-            <GuiaHeader guia={datos.guia} />
-            <TarjetaEstado
-              datos={datos}
-              enVivo={enVivo}
-              ultimaActualizacion={ultimaActualizacion}
-              animando={animando}
-            />
-            <BarraProgreso estado={datos.estado_actual} />
-            <MapaEnvio datos={datosMapa(datos)} className="mb-4" />
-            {ESTADOS_EXCEPCION.includes(datos.estado_actual) && <BannerExcepcion />}
-            <InfoRuta datos={datos} />
-            <Historial eventos={datos.eventos} />
-          </>
-        )}
-      </main>
+      {/* Historial */}
+      <Historial eventos={datos.eventos} />
 
-      {/* Pie */}
-      <footer className="border-t border-border py-5 px-4 mt-6">
-        <div className="max-w-2xl mx-auto text-center text-xs text-ink-muted">
-          <span className="font-semibold text-navy">{t.app.nombre}</span>
-          {' · '}
-          {t.pie.telefono}
-          {' · '}
-          {t.pie.correo}
-        </div>
-      </footer>
-    </>
+      {/* Botón WhatsApp */}
+      <a
+        href={urlWhatsApp(mensajeWhatsAppGuia(formatearGuia(datos.guia)))}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="mx-4 mt-4 min-h-[52px] flex items-center justify-center gap-2.5 rounded-xl bg-accent-strong text-white font-semibold text-base hover:bg-accent transition-colors cursor-pointer no-underline"
+      >
+        <MessageCircle size={18} strokeWidth={1.8} aria-hidden="true" />
+        ¿Dudas con tu envío? Escríbenos
+      </a>
+    </LayoutRastreo>
   )
 }
 

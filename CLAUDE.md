@@ -185,6 +185,7 @@ Marca cada fase con [x] cuando esté terminada.
 - [x] **Fase 6: Vista pública.** Buscador, validación de la guía, línea de tiempo y actualización en vivo. Incluye auditoría de autores, pulido visual (fase 6b), script db:tipos y verificar:rutas.
 - [x] **Fase D1: Logo e identidad de marca.** Componente `<Logo />`, archivos en `src/assets/marca/`, favicons reales, `manifest.webmanifest`, Open Graph con `og-image.png`, hoja de marca en `/dev/marca` (solo DEV), y sección Marca en CLAUDE.md.
 - [x] **Fase R1: Mapa interactivo y ubicaciones.** Coordenadas en `envios` y `eventos_envio`; tabla `ubicaciones`; componente `MapaEnvio` (MapLibre GL JS + OpenFreeMap); `SelectorUbicacion` para el admin (chips de frecuentes, Nominatim, pin arrastrable); mapa en rastreo público con actualización en vivo.
+- [x] **Fase R2: Rediseño vista pública.** Home completo (header, hero con buscador, accesos rápidos, rutas, cómo funciona, servicios, contacto, pie) y página de rastreo rediseñada (bloque superior navy, barra de progreso segmentada, historial con evento actual en naranja, botón WhatsApp). Tipografía Archivo añadida. Nuevos tokens de color. `src/config/empresa.ts` con datos configurables.
 - [ ] **Fase 7: Despliegue.** Cloudflare Pages, dominio, URLs de Auth, keep-alive y respaldo.
 - [ ] **Fase 8: Extras.** Rótulo imprimible en PDF con QR, notificaciones por correo, inglés y resumen en el dashboard.
 
@@ -194,20 +195,30 @@ Marca cada fase con [x] cuando esté terminada.
 
 | Token | Hex | WCAG AA sobre blanco | Uso |
 |---|---|---|---|
-| `navy` | `#0F2D5E` | 13.6:1 ✓ | Sidebar, logo, encabezados |
+| `navy` | `#0F2D5E` | 13.6:1 ✓ | Header, hero, sidebar, encabezados |
+| `navy-deep` | `#0A1F42` | — | Pie de página |
 | `accent` | `#E8500A` | 3.7:1 (solo íconos/elementos grandes) | Bordes activos, indicadores |
 | `accent-strong` | `#C2410C` | 5.1:1 ✓ | Botones con texto blanco, texto en naranja |
+| `accent-soft` | `#FDEEE6` | — | Fondo suave naranja (íconos cotizar, halo activo en historial) |
 | `canvas` | `#F4F6F9` | — | Fondo de páginas |
 | `surface` | `#FFFFFF` | — | Tarjetas, formularios |
 | `border` | `#D1D9E6` | — | Bordes de inputs, separadores |
+| `border-subtle` | `#DDE3EC` | — | Bordes de tarjetas en vista pública |
 | `ink` | `#111827` | 18.1:1 ✓ | Texto principal |
-| `ink-muted` | `#6B7280` | 4.7:1 ✓ | Texto secundario (usar sobre `surface` blanco) |
+| `ink-muted` | `#5B6474` | 5.6:1 ✓ | Texto secundario (reemplaza #6B7280 en la vista pública) |
+| `icon-bg` | `#EEF2F8` | — | Fondo de íconos en tarjetas de acceso |
 
 ### Tipografía
 
-- **IBM Plex Sans** 400 y 600 para toda la interfaz (`@fontsource/ibm-plex-sans`).
-- **IBM Plex Mono** 400 para guías, IDs y datos numéricos en tablas (`@fontsource/ibm-plex-mono`).
-- **Archivo ExtraBold** es la tipografía del logotipo (nombre "Nexpak"), pero ya está convertida a trazos en los SVG. No se usa como webfont.
+| Uso | Fuente | Token Tailwind | Paquete |
+|---|---|---|---|
+| Titulares grandes (`h1`, `h2`), logotipo en header/pie | **Archivo** 700/800 | `font-display` | `@fontsource/archivo` (700, 800) |
+| Todo el texto de interfaz | **IBM Plex Sans** 400/600 | `font-sans` | `@fontsource/ibm-plex-sans` |
+| Guías, IDs, datos numéricos, tablas | **IBM Plex Mono** 400 | `font-mono` | `@fontsource/ibm-plex-mono` |
+
+- Archivo en la vista pública: `h1` del hero, `h2` de cada sección, estado grande en la página de rastreo, nombre de empresa en header y pie.
+- IBM Plex Sans para todos los cuerpos de texto, labels, botones y navegación.
+- IBM Plex Mono para guías NXP, números de paso, códigos de ruta (US ⇄ CA).
 - Sin itálicas en la interfaz. Sin fuentes decorativas.
 
 ### Marca — archivos
@@ -243,6 +254,22 @@ Viewboxes: isotipo `0 0 80 68`, logo horizontal `0 0 365.88 68`. El componente `
 - Íconos: **Lucide React** (`strokeWidth={1.75}`, 18 px en nav, 16 px en contenido inline).
 - Los estados de envío siempre van con ícono + etiqueta de texto, nunca solo color.
 - Solo modo claro. Dark mode: Fase 8.
+
+## Datos que el cliente debe completar antes de publicar
+
+El archivo `src/config/empresa.ts` centraliza todos los datos de negocio con valores entre corchetes. Reemplazarlos antes del despliegue:
+
+| Campo | Descripción |
+|---|---|
+| `whatsapp` | Número en formato internacional sin espacios (ej. `15551234567`) |
+| `correo` | Correo de contacto |
+| `telefono` | Teléfono de contacto |
+| `direccion` / `ciudad` | Dirección física de la empresa |
+| `razonSocial` / `nit` | Datos legales para el pie de página |
+| `rutas.usca.estandar / express` | Días de tránsito US⇄CA |
+| `rutas.mxus.estandar / express` | Días de tránsito MX→US |
+| `rutas.estados.estandar / express` | Días de tránsito entre estados |
+| `servicios.estandar.precio` / `express.precio` | Precio desde por libra |
 
 ## Decisiones tomadas
 
