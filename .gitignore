@@ -46,3 +46,6 @@ tmp/
 # Playwright
 playwright-report/
 test-results/
+
+# Wrangler (caché local del CLI de Cloudflare)
+.wrangler/
