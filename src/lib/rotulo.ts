@@ -1,6 +1,6 @@
 import type { Database } from './database.types'
 import { formatearGuia } from './guia'
-import { formatearFecha, formatearPeso, formatearDimensiones } from './formato'
+import { formatearFecha, formatearSoloFecha, formatearPeso, formatearDimensiones } from './formato'
 import logoNegroUrl from '../assets/marca/logo-horizontal-negro.svg?url'
 
 type Envio = Database['public']['Tables']['envios']['Row']
@@ -205,7 +205,7 @@ async function dibujarRotulo(
   doc.text(`Creado: ${formatearFecha(envio.created_at)}`, pad, y)
   if (envio.fecha_estimada_entrega) {
     doc.text(
-      `Entrega est.: ${formatearFecha(envio.fecha_estimada_entrega)}`,
+      `Entrega est.: ${formatearSoloFecha(envio.fecha_estimada_entrega)}`,
       W_PT - pad,
       y,
       { align: 'right' },
@@ -226,7 +226,7 @@ async function dibujarRotulo(
   doc.addImage(qrImg, 'PNG', qrX, qrY, qrSize, qrSize)
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(6.5)
-  doc.setTextColor(GRAY)
+  doc.setTextColor(BLACK)
   doc.text('Escanea para rastrear', qrX + qrSize / 2, qrY + qrSize + 9, { align: 'center' })
 
   // ── Pie ─────────────────────────────────────────────────────────────────────
